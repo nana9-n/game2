@@ -41,6 +41,8 @@ const DEFAULT_SHAPE = {
   earth:   'platform',
   light:   'sphere',
   plant:   'vine',
+  bloom:   'floweringVines',
+  prism:   'beam',
   barrier: 'shield',
   unknown: 'fizzle'
 };
@@ -189,10 +191,9 @@ export class SpellCompiler {
     }
 
     // ---------- 10. Оценка риска ----------
+    // Запретные заклинания убраны: игра больше не блокирует и не помечает схемы
+    // как forbidden, оставляя только обычную оценку стабильности и мощности.
     let risk = this._assessRisk(element, stability, power, glyphs, options);
-    if (risk.forbidden) {
-      notes.push('⚠ Эта схема воздействует на запретную область магии.');
-    }
 
     // ---------- Финальная нормализация ----------
     stability = Math.max(0, Math.min(100, Math.round(stability)));
@@ -216,7 +217,7 @@ export class SpellCompiler {
       duration,
       area,
       risk: risk.level,
-      forbidden: risk.forbidden,
+      forbidden: false,
       center: activationCircle ? activationCircle.center : { x: 260, y: 260 },
       combo: combo ? combo.label : null,
       notes,
@@ -288,41 +289,34 @@ export class SpellCompiler {
 
   static _resolveCombo(elements) {
     const has = e => elements.includes(e);
+    if (has('earth') && has('water') && has('light')) return { element: 'bloom', label: 'Земля + Вода + Свет = Цветение' };
+    if (has('water') && has('plant')) return { element: 'bloom', label: 'Вода + Лозы = Цветущие лозы' };
     if (has('water') && has('wind')) return { element: 'mist', label: 'Вода + Ветер = Туман/Дождь' };
-    if (has('fire') && has('wind'))  return { element: 'firestorm', label: 'Огонь + Ветер = Огненный поток' };
+    if (has('fire') && has('wind')) return { element: 'firestorm', label: 'Огонь + Ветер = Огненный поток' };
     if (has('earth') && has('plant')) return { element: 'plant', label: 'Земля + Растение = Корни/Лоза' };
     if (has('light') && has('barrier')) return { element: 'lightdome', label: 'Свет + Барьер = Световой купол' };
+    if (has('fire') && has('water')) return { element: 'mist', label: 'Огонь + Вода = Паровая завеса' };
+    if (has('earth') && has('fire')) return { element: 'lava', label: 'Земля + Огонь = Магма' };
+    if (has('earth') && has('water')) return { element: 'mud', label: 'Земля + Вода = Грязь/Рост' };
+    if (has('light') && has('plant')) return { element: 'bloom', label: 'Свет + Растение = Бурное цветение' };
+    if (has('light') && has('water')) return { element: 'prism', label: 'Свет + Вода = Призматический луч' };
     return null;
   }
 
   static _assessRisk(element, stability, power, glyphs, options) {
-    // «Запретная» магия: воздействие на живую цель боевым/трансформирующим эффектом
-    const target = options.target;
-    const isCombat = ['fire', 'firestorm', 'earth'].includes(element) && power > 60;
-    const tooManyStars = glyphs.filter(g => g.type === GlyphTypes.STAR).length >= 2;
-
-    let forbidden = false;
-    if (target && target.alive && (isCombat || element === 'fire')) {
-      forbidden = true;
-    }
-    // Режим обучения блокирует мощную/опасную магию
-    if (options.mode === 'tutorial' && (power > 75 || forbidden)) {
-      forbidden = true;
-    }
-
     let level = 'low';
-    if (forbidden) level = 'forbidden';
-    else if (stability < 35) level = 'high';
+    if (stability < 35) level = 'high';
     else if (stability < 60 || power > 70) level = 'medium';
 
-    return { level, forbidden };
+    return { level, forbidden: false };
   }
 
   static _elementName(e) {
     return {
       water: 'Вода', fire: 'Огонь', wind: 'Ветер', earth: 'Земля',
-      light: 'Свет', plant: 'Растение', barrier: 'Барьер',
+      light: 'Свет', plant: 'Растение', bloom: 'Цветущие лозы', prism: 'Призма', barrier: 'Барьер',
       mist: 'Туман', firestorm: 'Огненный шторм', lightdome: 'Световой купол',
+      mud: 'Грязь', lava: 'Магма',
       unknown: 'Неизвестно'
     }[e] || e;
   }

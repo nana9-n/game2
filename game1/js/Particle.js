@@ -97,6 +97,9 @@ export class Particle {
       case 'leaf':
         this._drawLeaf(ctx, size);
         break;
+      case 'flower':
+        this._drawFlower(ctx, size);
+        break;
       case 'shard':
         this._drawShard(ctx, size);
         break;
@@ -150,6 +153,23 @@ export class Particle {
     ctx.rotate(this.rotation);
     ctx.beginPath();
     ctx.ellipse(0, 0, size * 1.7, size * 0.75, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  _drawFlower(ctx, size) {
+    ctx.save();
+    ctx.translate(this.x, this.y);
+    ctx.rotate(this.rotation);
+    for (let i = 0; i < 5; i++) {
+      const a = i / 5 * Math.PI * 2;
+      ctx.beginPath();
+      ctx.ellipse(Math.cos(a) * size, Math.sin(a) * size, size * 0.75, size * 0.38, a, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.fillStyle = '#f1c66a';
+    ctx.beginPath();
+    ctx.arc(0, 0, size * 0.35, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
   }
