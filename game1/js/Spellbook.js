@@ -55,8 +55,10 @@ export class Spellbook {
     const elementNames = {
       water: 'Водный знак', fire: 'Огненный знак', wind: 'Знак ветра',
       earth: 'Земляной знак', light: 'Светоч', plant: 'Знак роста',
+      bloom: 'Цветущие лозы', prism: 'Призматический луч',
       barrier: 'Барьер', mist: 'Туман', firestorm: 'Огнешторм',
-      lightdome: 'Световой купол', unknown: 'Незавершённая схема'
+      lightdome: 'Световой купол', mud: 'Грязь роста', lava: 'Магма', storm: 'Шторм',
+      unknown: 'Незавершённая схема'
     };
     const base = elementNames[spell.element] || 'Схема';
     return `${base} (${spell.shape})`;
