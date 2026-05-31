@@ -664,10 +664,15 @@ body::after {
 .element-earth    { color: var(--earth); }
 .element-light    { color: var(--light); }
 .element-plant    { color: var(--plant); }
+.element-bloom    { color: #a94374; }
+.element-prism    { color: #5b6fb1; }
 .element-barrier  { color: var(--barrier); }
 .element-mist     { color: #4a6e7d; }
 .element-firestorm{ color: #a84b1c; }
 .element-lightdome{ color: #89701a; }
+.element-mud      { color: #5b4a2e; }
+.element-lava     { color: #9f321d; }
+.element-storm    { color: #397391; }
 .element-unknown  { color: var(--muted); }
 
 /* Риск */
@@ -886,4 +891,85 @@ body::after {
 ::selection {
   background: #7a4d21;
   color: #fff4d7;
+}
+
+/* ====== REFERENCE POLISH: мягкий книжный кадр и список комбинаций ====== */
+.topbar {
+  filter: drop-shadow(0 8px 16px rgba(58, 34, 18, 0.18));
+}
+
+.panel {
+  outline: 1px solid rgba(255, 244, 206, 0.62);
+  outline-offset: -12px;
+}
+
+.panel::before,
+.panel::after {
+  filter: saturate(0.9) contrast(1.05);
+}
+
+.canvas-stack::after {
+  content: '';
+  position: absolute;
+  inset: 18px;
+  pointer-events: none;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle, transparent 55%, rgba(225, 201, 146, 0.08) 56% 58%, transparent 59%),
+    conic-gradient(from -18deg, transparent 0 8%, rgba(210, 178, 109, 0.1) 9% 10%, transparent 11% 24%, rgba(210, 178, 109, 0.08) 25% 26%, transparent 27% 100%);
+  mix-blend-mode: screen;
+  z-index: 2;
+}
+
+#drawCanvas,
+#sceneCanvas,
+.book-entry canvas {
+  filter: saturate(0.92) contrast(0.98);
+}
+
+#sceneCanvas {
+  background:
+    radial-gradient(ellipse at 50% 68%, rgba(143, 120, 73, 0.16), transparent 38%),
+    radial-gradient(circle at 50% 40%, rgba(167, 183, 159, 0.08), transparent 38%),
+    repeating-linear-gradient(10deg, rgba(255,255,255,.018) 0 2px, transparent 2px 15px),
+    linear-gradient(135deg, #243129, #141d1a 70%);
+}
+
+.legend h3 + .combo-legend,
+.combo-legend {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(220px, 1fr));
+  gap: 7px 24px;
+  margin-top: 8px;
+  padding-top: 12px;
+  border-top: 2px dashed rgba(76, 42, 24, 0.34);
+  font-size: 0.95rem;
+  line-height: 1.28;
+  color: #3b2417;
+}
+
+.combo-legend li {
+  position: relative;
+  padding-left: 18px;
+}
+
+.combo-legend li::before {
+  content: '✦';
+  position: absolute;
+  left: 0;
+  color: var(--gold);
+  text-shadow: 0 1px 0 rgba(66, 38, 20, 0.45);
+}
+
+@media (max-width: 720px) {
+  .glyph-legend,
+  .combo-legend {
+    grid-template-columns: 1fr;
+  }
+
+  .trial-hint {
+    max-width: 100%;
+    text-align: left;
+  }
 }

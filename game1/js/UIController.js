@@ -88,16 +88,11 @@ export class UIController {
   // ---------- Привязка интерфейса ----------
 
   _bindUI() {
-    document.getElementById('btnUndo').onclick = () => {
-      this.recorder.undo();
-      this._onDraw();
-    };
-    document.getElementById('btnClear').onclick = () => {
-      this.recorder.clear();
-      this._clearAnalysis();
-      this._drawActivationGuide();
-    };
+    document.getElementById('btnUndo').onclick = () => this._undoStroke();
+    document.getElementById('btnClear').onclick = () => this._clearDrawing();
     document.getElementById('btnCast').onclick = () => this._castSpell();
+
+    document.addEventListener('keydown', event => this._handleHotkeys(event));
 
     const trainButton = document.getElementById('btnTrainNN');
     if (trainButton) trainButton.onclick = () => this.trainingUI.open();
@@ -115,10 +110,46 @@ export class UIController {
     // Закрытие модалок
     document.querySelectorAll('[data-close]').forEach(el => {
       el.onclick = () => {
-        document.getElementById('bookModal').classList.add('hidden');
-        document.getElementById('warnModal').classList.add('hidden');
+        document.getElementById('bookModal')?.classList.add('hidden');
       };
     });
+  }
+
+  _handleHotkeys(event) {
+    const key = event.key.toLowerCase();
+    const target = event.target;
+    const isTyping = target && ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName);
+    if (isTyping) return;
+
+    if ((event.ctrlKey || event.metaKey) && key === 'z' && !event.shiftKey) {
+      event.preventDefault();
+      this._undoStroke();
+    } else if (((event.ctrlKey || event.metaKey) && key === 'y') || ((event.ctrlKey || event.metaKey) && event.shiftKey && key === 'z')) {
+      event.preventDefault();
+      this._redoStroke();
+    } else if ((event.ctrlKey || event.metaKey) && key === 'enter') {
+      event.preventDefault();
+      this._castSpell();
+    } else if ((event.ctrlKey || event.metaKey) && (key === 'backspace' || key === 'delete')) {
+      event.preventDefault();
+      this._clearDrawing();
+    }
+  }
+
+  _undoStroke() {
+    this.recorder.undo();
+    this._onDraw();
+  }
+
+  _redoStroke() {
+    this.recorder.redo();
+    this._onDraw();
+  }
+
+  _clearDrawing() {
+    this.recorder.clear();
+    this._clearAnalysis();
+    this._drawActivationGuide();
   }
 
   _switchMode(mode) {
@@ -263,25 +294,6 @@ export class UIController {
     const target = this.mode === 'trial' ? { alive: false } : null;
     const spell = SpellCompiler.compile(report, { mode: this.mode, target });
 
-    // Запретная магия → предупреждение
-    if (spell.forbidden) {
-      this._showWarning(
-        'Эта схема воздействует на запретную область магии (тело, разум, ' +
-        'необратимое превращение живого). Магия требует ответственности. ' +
-        (this.mode === 'tutorial'
-          ? 'В режиме обучения такая схема заблокирована.'
-          : 'В песочнице показан безопасный нестабильный откат: дым и трещины пространства.')
-      );
-      // В песочнице показываем безопасный сбой
-      if (this.mode !== 'tutorial') {
-        spell.shape = 'fizzle';
-        spell.stability = 15;
-        this.engine.cast(spell);
-      }
-      this._renderResult(spell, true);
-      return;
-    }
-
     // Запускаем эффект
     this.engine.cast(spell);
     this._renderResult(spell, false);
@@ -322,13 +334,13 @@ export class UIController {
     const el = document.getElementById('spellResult');
     const elName = {
       water: 'Вода', fire: 'Огонь', wind: 'Ветер', earth: 'Земля',
-      light: 'Свет', plant: 'Растение', barrier: 'Барьер',
+      light: 'Свет', plant: 'Растение', bloom: 'Цветущие лозы', prism: 'Призма', barrier: 'Барьер',
       mist: 'Туман', firestorm: 'Огнешторм', lightdome: 'Световой купол',
-      unknown: 'Неизвестно'
+      mud: 'Грязь', lava: 'Магма', storm: 'Шторм', unknown: 'Неизвестно'
     }[spell.element] || spell.element;
 
     const riskLabel = {
-      low: 'Низкий', medium: 'Средний', high: 'Высокий', forbidden: 'ЗАПРЕЩЕНО'
+      low: 'Низкий', medium: 'Средний', high: 'Высокий'
     }[spell.risk];
 
     const notes = spell.notes.map(n => `<li>${n}</li>`).join('');
@@ -439,14 +451,6 @@ export class UIController {
     setTimeout(() => this._castSpell(), 400);
   }
 
-  // ---------- Предупреждение (этический барьер) ----------
-
-  _showWarning(text) {
-    const modal = document.getElementById('warnModal');
-    document.getElementById('warnText').textContent = text;
-    modal.classList.remove('hidden');
-  }
-
   // ---------- Текстовые ярлыки ----------
 
   _glyphLabel(type) {
@@ -473,7 +477,8 @@ export class UIController {
     return {
       beam: 'луч', spray: 'брызги', fountain: 'фонтан', burst: 'взрыв',
       vortex: 'вихрь', gust: 'порыв', lift: 'левитация', platform: 'платформа',
-      sphere: 'сфера света', shield: 'щит', vine: 'лоза', fizzle: 'пшик (сбой)'
+      sphere: 'сфера света', shield: 'щит', vine: 'лоза', floweringVines: 'цветущие лозы',
+      steam: 'пар', firestorm: 'огненный вихрь', storm: 'шторм', lava: 'магма', growth: 'рост', fizzle: 'пшик (сбой)'
     }[shape] || shape;
   }
 }

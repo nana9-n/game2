@@ -11,10 +11,12 @@ const PALETTES = {
   fire: ['#fff176', '#ffb13d', '#ff4b24', '#5b160d', '#6a6a72'],
   wind: ['#d7fff0', '#91e7d0', '#c7f7ff', '#95b8a8'],
   earth: ['#d29b5a', '#8b5631', '#5f3a22', '#d9c0a0'],
-  light: ['#fffdf0', '#fff0a8', '#ffd45a', '#ffffff'],
-  plant: ['#a8ff83', '#4fb84f', '#2f6f32', '#ffd7ef'],
-  barrier: ['#d7c2ff', '#8f72ff', '#eef0ff', '#5b4aa0'],
-  mist: ['#e8f4ff', '#c8dbe8', '#ffffff', '#9bb5c4'],
+  light: ['#f7edbc', '#e4cf73', '#b88b35', '#fff7d6'],
+  plant: ['#9edc78', '#438b42', '#2f6f32', '#d98ab5'],
+  bloom: ['#9edc78', '#438b42', '#d98ab5', '#f5c6de'],
+  prism: ['#b8e3f2', '#d4c5f2', '#f0d27c', '#ffffff'],
+  barrier: ['#b9a4e8', '#735cc5', '#d9dcf4', '#4f438f'],
+  mist: ['#d5e3ec', '#aebfcb', '#edf5f7', '#8298a5'],
   firestorm: ['#fff176', '#ff7a24', '#ff2b12', '#d7fff0'],
   lightdome: ['#fffdf0', '#fff0a8', '#d7c2ff', '#ffffff'],
   mud: ['#7b5a32', '#5f3f24', '#3f7a32', '#caa06b'],
@@ -29,7 +31,9 @@ const COMBOS = {
   'earth+water': { element: 'mud', shape: 'growth', label: '🌿 ГРЯЗЬ И РОСТ!', duration: 4.2, boost: 1.1 },
   'earth+fire': { element: 'lava', shape: 'lava', label: '🌋 МАГМА!', duration: 4.0, boost: 1.2 },
   'water+wind': { element: 'storm', shape: 'storm', label: '🌧 ШТОРМ!', duration: 4.0, boost: 1.15 },
-  'light+plant': { element: 'plant', shape: 'bloom', label: '🌸 БУРНЫЙ РОСТ!', duration: 4.4, boost: 1.35 }
+  'plant+water': { element: 'bloom', shape: 'floweringVines', label: '🌸 ЦВЕТУЩИЕ ЛОЗЫ!', duration: 4.8, boost: 1.3 },
+  'light+plant': { element: 'bloom', shape: 'floweringVines', label: '🌸 БУРНЫЙ РОСТ!', duration: 4.4, boost: 1.35 },
+  'light+water': { element: 'prism', shape: 'beam', label: '🌈 ПРИЗМАТИЧЕСКИЙ ЛУЧ!', duration: 3.8, boost: 1.18 }
 };
 
 export class EffectEngine {
@@ -129,8 +133,15 @@ export class EffectEngine {
     if (shape === 'vortex' || element === 'wind' || element === 'firestorm') {
       structures.push({ type: 'vortex', radius: area * 0.6, spin: dir.angle });
     }
-    if (shape === 'vine' || element === 'plant') {
-      structures.push({ type: 'vine', points: [{ x: origin.x, y: origin.y }], length: area, dir, blooms: element === 'plant' });
+    if (shape === 'vine' || shape === 'floweringVines' || element === 'plant' || element === 'bloom') {
+      structures.push({
+        type: 'vine',
+        points: [{ x: origin.x, y: origin.y }],
+        length: area,
+        dir,
+        blooms: element === 'plant' || element === 'bloom',
+        flowers: element === 'bloom' || shape === 'floweringVines'
+      });
     }
     return structures.map(s => ({ ...s, origin, palette, t: 0 }));
   }
@@ -183,7 +194,7 @@ export class EffectEngine {
   }
 
   _impact(effect, label) {
-    this.flashes.push({ x: effect.origin.x, y: effect.origin.y, r: effect.area * 0.7, life: 0.26, maxLife: 0.26, color: effect.palette[0] });
+    this.flashes.push({ x: effect.origin.x, y: effect.origin.y, r: effect.area * 0.55, life: 0.22, maxLife: 0.22, color: effect.palette[0] });
     this.particles.emit({
       count: Math.floor(18 + effect.power * 42),
       x: effect.origin.x,
@@ -199,7 +210,7 @@ export class EffectEngine {
       color: effect.palette[1] || effect.palette[0],
       shape: 'spark',
       glow: true,
-      additive: true,
+      additive: false,
       drag: 0.92,
       turbulence: effect.chaos * 45
     });
@@ -225,7 +236,7 @@ export class EffectEngine {
     const ctx = this.ctx;
     ctx.save();
     ctx.globalCompositeOperation = 'source-over';
-    ctx.fillStyle = 'rgba(22, 25, 25, 0.16)';
+    ctx.fillStyle = 'rgba(19, 24, 22, 0.19)';
     ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
     const grad = ctx.createLinearGradient(0, this.canvas.height * 0.55, 0, this.canvas.height);
@@ -272,13 +283,14 @@ export class EffectEngine {
       case 'wind': this._emitWind(effect); break;
       case 'earth': this._emitEarth(effect); break;
       case 'light': case 'lightdome': this._emitLight(effect); break;
-      case 'plant': this._emitPlant(effect); break;
+      case 'plant': case 'bloom': this._emitPlant(effect); break;
       case 'barrier': this._emitBarrier(effect); break;
       case 'mist': this._emitSteam(effect); break;
       case 'firestorm': this._emitFirestorm(effect); break;
       case 'mud': this._emitMud(effect); break;
       case 'lava': this._emitLava(effect); break;
       case 'storm': this._emitStorm(effect); break;
+      case 'prism': this._emitPrism(effect); break;
       default: this._emitFizzle(effect); break;
     }
   }
@@ -297,7 +309,7 @@ export class EffectEngine {
       angle: e.shape === 'beam' ? e.dir.angle : -Math.PI / 2, spread: e.shape === 'beam' ? 0.4 + e.chaos : 1.2,
       speed: 130 + e.power * 260, speedJitter: 180, life: 0.55 + e.power * 0.7, lifeJitter: 0.4,
       size: 5 + e.power * 9, sizeJitter: 7, color: this._pick(e.palette.slice(0, 3)), shape: 'circle',
-      gravity: -80, drag: 0.94, turbulence: 60 + e.chaos * 150, glow: true, additive: true });
+      gravity: -80, drag: 0.94, turbulence: 60 + e.chaos * 150, glow: true, additive: false });
     if (Math.random() < 0.32) this.particles.emit({ x: e.origin.x, y: e.origin.y, xJitter: 30, yJitter: 14,
       angle: -Math.PI / 2, spread: 0.8, speed: 55, speedJitter: 80, life: 1.2, size: 9, sizeJitter: 8,
       color: '#60606a', shape: 'smoke', gravity: -35, drag: 0.97, turbulence: 45, alpha: 0.45 });
@@ -323,14 +335,23 @@ export class EffectEngine {
     this.particles.emit({ count: 2, x: e.origin.x, y: e.origin.y, xJitter: e.area * 0.2, yJitter: e.area * 0.2,
       angle: Math.random() * Math.PI * 2, spread: Math.PI * 2, speed: 45 + e.power * 160, speedJitter: 110,
       life: 0.7 + e.power, lifeJitter: 0.5, size: 3 + e.power * 8, sizeJitter: 6, color: this._pick(e.palette),
-      shape: Math.random() < 0.28 ? 'rune' : 'spark', drag: 0.98, turbulence: e.chaos * 35, glow: true, additive: true });
+      shape: Math.random() < 0.28 ? 'rune' : 'spark', drag: 0.98, turbulence: e.chaos * 35, glow: true, additive: false });
   }
 
   _emitPlant(e) {
     this.particles.emit({ x: e.origin.x, y: e.origin.y, xJitter: e.area * 0.18, yJitter: 8,
       angle: e.dir.angle || -Math.PI / 2, spread: 0.8, speed: 55 + e.power * 110, speedJitter: 80,
       life: 1.2, lifeJitter: 0.8, size: 4 + e.power * 5, sizeJitter: 4, color: this._pick(e.palette),
-      shape: 'leaf', gravity: -45, drag: 0.975, turbulence: 60, glow: false });
+      shape: e.element === 'bloom' && Math.random() < 0.35 ? 'flower' : 'leaf', gravity: -45, drag: 0.975, turbulence: 60, glow: false });
+  }
+
+  _emitPrism(e) {
+    const colors = ['#8fd3ff', '#d9b9ff', '#ffe08a', '#f8f2d0'];
+    this.particles.emit({ count: 2, x: e.origin.x, y: e.origin.y, xJitter: 10, yJitter: 10,
+      angle: e.dir.angle, spread: 0.22 + e.chaos * 0.45, speed: 180 + e.power * 260, speedJitter: 90,
+      life: 0.7 + e.power * 0.45, lifeJitter: 0.35, size: 2.4 + e.power * 4, sizeJitter: 3,
+      color: this._pick(colors), shape: Math.random() < 0.55 ? 'line' : 'spark', drag: 0.985,
+      turbulence: e.chaos * 45, glow: true, additive: false, alpha: 0.72 });
   }
 
   _emitBarrier(e) {
@@ -338,7 +359,7 @@ export class EffectEngine {
     const r = e.area * 0.55;
     this.particles.emit({ x: e.origin.x + Math.cos(a) * r, y: e.origin.y + Math.sin(a) * r,
       angle: a + Math.PI / 2, spread: 0.2, speed: 80, speedJitter: 50, life: 0.65, size: 3 + e.power * 4,
-      color: this._pick(e.palette), shape: 'rune', drag: 0.97, glow: true, additive: true });
+      color: this._pick(e.palette), shape: 'rune', drag: 0.97, glow: true, additive: false });
   }
 
   _emitSteam(e) {
@@ -356,7 +377,7 @@ export class EffectEngine {
     this.particles.emit({ count: 3, x, y, angle: t + Math.PI / 2, spread: 0.5, speed: 170 + e.power * 280,
       speedJitter: 160, life: 0.7, lifeJitter: 0.55, size: 5 + e.power * 9, sizeJitter: 7,
       color: this._pick(e.palette), shape: Math.random() < 0.35 ? 'spark' : 'circle', gravity: -70,
-      drag: 0.94, turbulence: 100 + e.chaos * 120, glow: true, additive: true });
+      drag: 0.94, turbulence: 100 + e.chaos * 120, glow: true, additive: false });
   }
 
   _emitMud(e) {
@@ -371,7 +392,7 @@ export class EffectEngine {
       angle: -Math.PI / 2, spread: 0.9, speed: 95 + e.power * 160, speedJitter: 100, life: 0.9,
       lifeJitter: 0.55, size: 6 + e.power * 11, sizeJitter: 8, color: this._pick(e.palette),
       shape: Math.random() < 0.55 ? 'circle' : 'shard', gravity: 420, drag: 0.94, turbulence: 40,
-      glow: true, additive: true });
+      glow: true, additive: false });
   }
 
   _emitStorm(e) {
@@ -414,14 +435,14 @@ export class EffectEngine {
   _drawFlashes(ctx) {
     for (const f of this.flashes) {
       const t = f.life / f.maxLife;
-      const r = f.r * (1.2 - t * 0.2);
+      const r = f.r * (1.08 - t * 0.1);
       const grad = ctx.createRadialGradient(f.x, f.y, 0, f.x, f.y, r);
-      grad.addColorStop(0, f.color);
-      grad.addColorStop(0.28, 'rgba(255,255,255,0.35)');
+      grad.addColorStop(0, this._hexToRgba(f.color, 0.42));
+      grad.addColorStop(0.35, 'rgba(255,246,214,0.16)');
       grad.addColorStop(1, 'rgba(255,255,255,0)');
       ctx.save();
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = t * 0.75;
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = t * 0.72;
       ctx.fillStyle = grad;
       ctx.beginPath();
       ctx.arc(f.x, f.y, r, 0, Math.PI * 2);
@@ -443,35 +464,60 @@ export class EffectEngine {
 
   _drawShield(ctx, s, e, lifeT) {
     const r = s.radius * (1 + s.ripple);
+    const baseY = s.origin.y + r * 0.26;
     ctx.save();
-    ctx.globalAlpha = 0.55 * lifeT;
-    ctx.globalCompositeOperation = 'lighter';
-    ctx.strokeStyle = e.palette[0];
-    ctx.fillStyle = e.palette[1];
-    ctx.lineWidth = 3;
-    ctx.shadowBlur = 20;
-    ctx.shadowColor = e.palette[0];
+    ctx.globalAlpha = 0.68 * lifeT;
+    ctx.globalCompositeOperation = 'source-over';
+
+    const grad = ctx.createRadialGradient(s.origin.x, s.origin.y - r * 0.25, r * 0.12, s.origin.x, s.origin.y, r * 1.05);
+    grad.addColorStop(0, this._hexToRgba(e.palette[2], 0.2));
+    grad.addColorStop(0.55, this._hexToRgba(e.palette[0], 0.12));
+    grad.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = grad;
     ctx.beginPath();
-    ctx.arc(s.origin.x, s.origin.y, r, Math.PI, Math.PI * 2);
-    ctx.stroke();
-    ctx.globalAlpha = 0.14 * lifeT;
+    ctx.ellipse(s.origin.x, baseY, r, r * 0.82, 0, Math.PI, Math.PI * 2);
+    ctx.lineTo(s.origin.x + r, baseY);
+    ctx.lineTo(s.origin.x - r, baseY);
+    ctx.closePath();
     ctx.fill();
-    ctx.globalAlpha = 0.35 * lifeT;
-    for (let i = 0; i < 6; i++) {
-      const a = Math.PI + (i / 5) * Math.PI;
+
+    ctx.strokeStyle = e.palette[0];
+    ctx.lineWidth = 3;
+    ctx.shadowBlur = 10;
+    ctx.shadowColor = e.palette[0];
+    for (let ring = 0; ring < 3; ring++) {
+      ctx.globalAlpha = (0.52 - ring * 0.12) * lifeT;
       ctx.beginPath();
-      ctx.moveTo(s.origin.x, s.origin.y);
-      ctx.lineTo(s.origin.x + Math.cos(a) * r, s.origin.y + Math.sin(a) * r);
+      ctx.ellipse(s.origin.x, baseY, r * (1 - ring * 0.12), r * 0.82 * (1 - ring * 0.12), 0, Math.PI, Math.PI * 2);
       ctx.stroke();
     }
+
+    ctx.globalAlpha = 0.45 * lifeT;
+    ctx.shadowBlur = 0;
+    ctx.beginPath();
+    ctx.moveTo(s.origin.x - r, baseY);
+    ctx.quadraticCurveTo(s.origin.x, baseY + r * 0.13, s.origin.x + r, baseY);
+    ctx.stroke();
+
+    ctx.globalAlpha = 0.23 * lifeT;
+    ctx.lineWidth = 1.2;
+    for (let i = 0; i < 7; i++) {
+      const a = Math.PI + (i / 6) * Math.PI;
+      ctx.beginPath();
+      ctx.moveTo(s.origin.x + Math.cos(a) * r * 0.18, baseY + Math.sin(a) * r * 0.12);
+      ctx.lineTo(s.origin.x + Math.cos(a) * r * 0.92, baseY + Math.sin(a) * r * 0.76);
+      ctx.stroke();
+    }
+
     if (s.cracks) {
-      ctx.strokeStyle = '#ffcfef';
+      ctx.globalAlpha = 0.5 * lifeT;
+      ctx.strokeStyle = '#d8b7d8';
       ctx.lineWidth = 1;
       for (let i = 0; i < 4; i++) {
         const a = Math.PI + i * 0.72 + e.age;
         ctx.beginPath();
-        ctx.moveTo(s.origin.x + Math.cos(a) * r * 0.35, s.origin.y + Math.sin(a) * r * 0.35);
-        ctx.lineTo(s.origin.x + Math.cos(a + 0.1) * r * 0.92, s.origin.y + Math.sin(a + 0.1) * r * 0.92);
+        ctx.moveTo(s.origin.x + Math.cos(a) * r * 0.35, baseY + Math.sin(a) * r * 0.35);
+        ctx.lineTo(s.origin.x + Math.cos(a + 0.1) * r * 0.88, baseY + Math.sin(a + 0.1) * r * 0.72);
         ctx.stroke();
       }
     }
@@ -505,12 +551,12 @@ export class EffectEngine {
     const pulse = 1 + Math.sin(e.age * 5) * 0.08;
     const r = s.radius * pulse;
     const grad = ctx.createRadialGradient(s.origin.x, s.origin.y, 0, s.origin.x, s.origin.y, r);
-    grad.addColorStop(0, 'rgba(255,255,255,0.95)');
-    grad.addColorStop(0.32, e.palette[1]);
+    grad.addColorStop(0, 'rgba(255,249,218,0.55)');
+    grad.addColorStop(0.32, this._hexToRgba(e.palette[1], 0.58));
     grad.addColorStop(1, 'rgba(255,255,255,0)');
     ctx.save();
-    ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = 0.55 * lifeT;
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = 0.5 * lifeT;
     ctx.fillStyle = grad;
     ctx.beginPath();
     ctx.arc(s.origin.x, s.origin.y, r, 0, Math.PI * 2);
@@ -529,10 +575,10 @@ export class EffectEngine {
 
   _drawVortex(ctx, s, e, lifeT) {
     ctx.save();
-    ctx.globalAlpha = 0.34 * lifeT;
-    ctx.globalCompositeOperation = 'lighter';
+    ctx.globalAlpha = 0.3 * lifeT;
+    ctx.globalCompositeOperation = 'source-over';
     ctx.strokeStyle = e.palette[0];
-    ctx.shadowBlur = 14;
+    ctx.shadowBlur = 9;
     ctx.shadowColor = e.palette[0];
     for (let arm = 0; arm < 4; arm++) {
       ctx.lineWidth = 2 + e.power * 3;
@@ -565,10 +611,14 @@ export class EffectEngine {
     ctx.stroke();
     for (let i = 2; i < s.points.length; i += 3) {
       const p = s.points[i];
-      ctx.fillStyle = i % 6 === 0 && s.blooms ? (e.palette[3] || '#ffd7ef') : e.palette[0];
-      ctx.beginPath();
-      ctx.ellipse(p.x, p.y, 8, 4, i, 0, Math.PI * 2);
-      ctx.fill();
+      if (s.flowers && i % 6 === 0) {
+        this._drawFlower(ctx, p.x, p.y, 7 + Math.sin(e.age + i) * 1.5, e.palette[3] || '#f5c6de', e.palette[2] || '#d98ab5');
+      } else {
+        ctx.fillStyle = i % 6 === 0 && s.blooms ? (e.palette[3] || '#d98ab5') : e.palette[0];
+        ctx.beginPath();
+        ctx.ellipse(p.x, p.y, 8, 4, i, 0, Math.PI * 2);
+        ctx.fill();
+      }
     }
     ctx.restore();
   }
@@ -590,6 +640,34 @@ export class EffectEngine {
       ctx.fillText(l.text, 0, 0);
       ctx.restore();
     }
+  }
+
+  _drawFlower(ctx, x, y, radius, petalColor, coreColor) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.fillStyle = petalColor;
+    for (let petal = 0; petal < 5; petal++) {
+      const a = petal / 5 * Math.PI * 2;
+      ctx.beginPath();
+      ctx.ellipse(Math.cos(a) * radius * 0.55, Math.sin(a) * radius * 0.55, radius * 0.48, radius * 0.24, a, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.fillStyle = coreColor;
+    ctx.beginPath();
+    ctx.arc(0, 0, radius * 0.24, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  _hexToRgba(color, alpha) {
+    if (!color || color[0] !== '#') return color;
+    const hex = color.slice(1);
+    const full = hex.length === 3 ? hex.split('').map(c => c + c).join('') : hex;
+    const value = Number.parseInt(full, 16);
+    const r = (value >> 16) & 255;
+    const g = (value >> 8) & 255;
+    const b = value & 255;
+    return `rgba(${r},${g},${b},${alpha})`;
   }
 
   _pick(palette) {

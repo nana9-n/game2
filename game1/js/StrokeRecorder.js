@@ -52,6 +52,7 @@ export class StrokeRecorder {
     this.onStrokeEnd = onStrokeEnd || (() => {});
 
     this.strokes = [];
+    this.redoStack = [];
     this.current = null;
     this.drawing = false;
 
@@ -127,6 +128,7 @@ export class StrokeRecorder {
       if (this.current && this.current.points.length) {
         this.current.finalize();
         this.strokes.push(this.current);
+        this.redoStack = [];
         this.onStrokeEnd();
       }
       this.current = null;
@@ -154,12 +156,20 @@ export class StrokeRecorder {
   // ---------- Управление ----------
 
   undo() {
-    this.strokes.pop();
+    const stroke = this.strokes.pop();
+    if (stroke) this.redoStack.push(stroke);
+    this._redraw();
+  }
+
+  redo() {
+    const stroke = this.redoStack.pop();
+    if (stroke) this.strokes.push(stroke);
     this._redraw();
   }
 
   clear() {
     this.strokes = [];
+    this.redoStack = [];
     this.current = null;
     this.drawing = false;
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
@@ -170,6 +180,7 @@ export class StrokeRecorder {
    */
   loadStrokes(rawStrokes) {
     this.strokes = [];
+    this.redoStack = [];
     for (const raw of rawStrokes) {
       const s = new Stroke();
       for (const p of raw.points) {

@@ -39,9 +39,9 @@
       </div>
 
       <div class="draw-controls">
-        <button id="btnUndo" title="Отменить последний штрих">↶ Отменить</button>
-        <button id="btnClear" title="Очистить холст">✕ Очистить</button>
-        <button id="btnCast" class="primary" title="Активировать заклинание">⚡ Активировать</button>
+        <button id="btnUndo" title="Отменить последний штрих (Ctrl+Z)">↶ Отменить</button>
+        <button id="btnClear" title="Очистить холст (Ctrl+Backspace)">✕ Очистить</button>
+        <button id="btnCast" class="primary" title="Активировать заклинание (Ctrl+Enter)">⚡ Активировать</button>
         <button id="btnTrainNN" title="Обучить нейросеть распознавать твои символы">🧠 Обучить нейросеть</button>
         <span id="nnStatus" style="font-size:.8rem;opacity:.5;align-self:center;">🧠 ИИ не обучен</span>
 
@@ -76,6 +76,20 @@
           <li>• точка — фокус</li>
           <li>◎ кольца — область</li>
         </ul>
+
+        <h3>Комбинации знаков</h3>
+        <ul class="combo-legend">
+          <li><b>Вода + Ветер</b> — туман/дождь, на сцене даёт шторм.</li>
+          <li><b>Огонь + Ветер</b> — огненный поток/вихрь.</li>
+          <li><b>Земля + Растение</b> — корни и лоза.</li>
+          <li><b>Свет + Барьер</b> — световой купол.</li>
+          <li><b>Огонь + Вода</b> — паровая завеса.</li>
+          <li><b>Земля + Огонь</b> — магма.</li>
+          <li><b>Земля + Вода</b> — грязь и рост.</li>
+          <li><b>Свет + Растение</b> — бурное цветение.</li>
+          <li><b>Свет + Вода</b> — призматический луч.</li>
+          <li><b>Вода + Лозы</b> — цветущие лозы с цветами.</li>
+        </ul>
       </div>
     </section>
 
@@ -104,7 +118,7 @@
           <li>Последним — замкнутый круг активации.</li>
           <li>Чем ровнее линии — тем стабильнее эффект.</li>
           <li>Толстые линии = сильнее, но затратнее.</li>
-          <li>Магия против живого — запрещена.</li>
+          <li>Ctrl+Z — отмена, Ctrl+Shift+Z/Ctrl+Y — возврат, Ctrl+Enter — активация.</li>
         </ol>
       </section>
     </aside>
@@ -120,16 +134,6 @@
     </div>
   </div>
 
-  <!-- МОДАЛКА: этическое предупреждение -->
-  <div id="warnModal" class="modal hidden">
-    <div class="modal-content warn">
-      <button class="modal-close" data-close>✕</button>
-      <h2>⚠ Запретная магия</h2>
-      <p id="warnText"></p>
-      <p class="muted">Чертёжная магия — искусство ответственности. Каждая линия — выбор.</p>
-      <button class="primary" data-close>Понятно</button>
-    </div>
-  </div>
 
   <script type="module" src="js/main.js"></script>
 </body>
