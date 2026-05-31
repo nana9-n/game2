@@ -1,0 +1,651 @@
+/* =========================================================
+   Witch Hat Atelier — стили
+   Тема: ночная мастерская волшебницы, фиолетово-синие тона,
+   светящиеся чернила, мягкие тени.
+   ========================================================= */
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg-0: #0c0d1f;
+  --bg-1: #15172e;
+  --bg-2: #1d1f3d;
+  --bg-3: #262a4d;
+  --line: #353a66;
+  --text: #e8e0ff;
+  --text-dim: #9c97c4;
+  --muted: #6f6a95;
+
+  --accent: #a48fff;
+  --accent-soft: #7b6cff;
+  --accent-glow: rgba(164, 143, 255, 0.4);
+
+  --water: #4fb6e6;
+  --fire: #ff7546;
+  --wind: #b3e8ce;
+  --earth: #d4a877;
+  --light: #ffe066;
+  --plant: #7ed16c;
+  --barrier: #c6a8ff;
+
+  --risk-low: #7ed16c;
+  --risk-medium: #ffd060;
+  --risk-high: #ff7546;
+  --risk-forbidden: #ff3a6a;
+
+  --radius: 14px;
+  --shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+html, body {
+  height: 100%;
+  font-family: 'Georgia', 'Times New Roman', serif;
+  background:
+    radial-gradient(circle at 20% 10%, #1b1d40 0%, transparent 50%),
+    radial-gradient(circle at 80% 90%, #2a1d4a 0%, transparent 50%),
+    var(--bg-0);
+  color: var(--text);
+  overflow-x: hidden;
+}
+
+body {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ====== TOP BAR ====== */
+
+.topbar {
+  padding: 16px 24px 8px;
+  text-align: center;
+  border-bottom: 1px solid var(--line);
+  background: rgba(13, 14, 31, 0.7);
+  backdrop-filter: blur(8px);
+}
+
+.topbar h1 {
+  font-size: 1.8rem;
+  letter-spacing: 1px;
+  background: linear-gradient(90deg, #d4c8ff, #a48fff, #7eb6ff);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.subtitle {
+  color: var(--text-dim);
+  font-style: italic;
+  font-size: 0.92rem;
+  margin-top: 4px;
+}
+
+.mode-switch {
+  margin-top: 12px;
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.mode-switch button {
+  background: var(--bg-2);
+  color: var(--text-dim);
+  border: 1px solid var(--line);
+  padding: 8px 18px;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.mode-switch button:hover {
+  background: var(--bg-3);
+  color: var(--text);
+  border-color: var(--accent-soft);
+}
+
+.mode-switch button.active {
+  background: linear-gradient(135deg, var(--accent-soft), var(--accent));
+  color: #fff;
+  border-color: var(--accent);
+  box-shadow: 0 0 16px var(--accent-glow);
+}
+
+/* ====== LAYOUT ====== */
+
+.layout {
+  flex: 1;
+  display: grid;
+  grid-template-columns: minmax(540px, 1fr) minmax(540px, 1fr) 360px;
+  gap: 16px;
+  padding: 16px;
+  align-items: start;
+}
+
+@media (max-width: 1400px) {
+  .layout { grid-template-columns: 1fr 1fr; }
+  .panel-analysis { grid-column: 1 / -1; }
+}
+
+@media (max-width: 1000px) {
+  .layout { grid-template-columns: 1fr; }
+}
+
+.panel {
+  background: linear-gradient(180deg, var(--bg-1), var(--bg-2));
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 16px;
+  box-shadow: var(--shadow);
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.panel-header h2 {
+  font-size: 1.1rem;
+  letter-spacing: 0.5px;
+  color: var(--text);
+  font-weight: normal;
+}
+
+.panel-header h2::before {
+  content: '✦ ';
+  color: var(--accent);
+}
+
+/* ====== INK METER ====== */
+
+.ink-meter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  color: var(--text-dim);
+}
+
+.ink-track {
+  width: 100px;
+  height: 8px;
+  background: var(--bg-3);
+  border-radius: 4px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+}
+
+.ink-fill {
+  height: 100%;
+  width: 100%;
+  background: linear-gradient(90deg, var(--accent-soft), var(--accent));
+  box-shadow: 0 0 8px var(--accent-glow);
+  transition: width 0.2s;
+}
+
+/* ====== CANVAS ====== */
+
+.canvas-stack {
+  position: relative;
+  width: 100%;
+  max-width: 520px;
+  margin: 0 auto;
+  aspect-ratio: 1 / 1;
+  border-radius: 12px;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at center, #1a1d3d 0%, #0e1024 90%);
+  border: 1px solid var(--line);
+  box-shadow: inset 0 0 60px rgba(0, 0, 0, 0.6), 0 0 24px rgba(123, 108, 255, 0.1);
+}
+
+.canvas-stack canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+#drawCanvas {
+  cursor: crosshair;
+  touch-action: none;
+  z-index: 2;
+}
+
+#overlayCanvas {
+  pointer-events: none;
+  z-index: 1;
+}
+
+#sceneCanvas {
+  display: block;
+  width: 100%;
+  max-width: 520px;
+  margin: 0 auto;
+  border-radius: 12px;
+  background:
+    linear-gradient(180deg, #0e1129 0%, #1a1640 60%, #0a0815 100%);
+  border: 1px solid var(--line);
+  box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.5);
+}
+
+/* ====== DRAW CONTROLS ====== */
+
+.draw-controls {
+  margin-top: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.draw-controls button {
+  background: var(--bg-3);
+  color: var(--text);
+  border: 1px solid var(--line);
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.draw-controls button:hover {
+  background: var(--bg-2);
+  border-color: var(--accent-soft);
+}
+
+.draw-controls button.primary {
+  background: linear-gradient(135deg, var(--accent-soft), var(--accent));
+  color: #fff;
+  border-color: var(--accent);
+  box-shadow: 0 0 14px var(--accent-glow);
+  font-weight: bold;
+}
+
+.draw-controls button.primary:hover {
+  box-shadow: 0 0 22px var(--accent-glow);
+  transform: translateY(-1px);
+}
+
+.toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.88rem;
+  color: var(--text-dim);
+  cursor: pointer;
+  margin-left: auto;
+}
+
+.toggle input {
+  accent-color: var(--accent);
+}
+
+/* ====== SCENE / LEGEND ====== */
+
+.trial-hint {
+  font-size: 0.88rem;
+  color: var(--text-dim);
+  font-style: italic;
+  white-space: pre-line;
+  max-width: 60%;
+  text-align: right;
+}
+
+.legend {
+  margin-top: 14px;
+  padding: 12px;
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 10px;
+  border: 1px solid var(--line);
+}
+
+.legend h3 {
+  font-size: 0.95rem;
+  margin-bottom: 8px;
+  color: var(--text-dim);
+  font-weight: normal;
+}
+
+.glyph-legend {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 4px 12px;
+  font-size: 0.85rem;
+  color: var(--text-dim);
+}
+
+.glyph-legend li {
+  padding: 2px 0;
+}
+
+/* ====== ANALYSIS PANEL ====== */
+
+.analysis-block {
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px dashed var(--line);
+}
+
+.analysis-block:last-child {
+  border-bottom: none;
+}
+
+.analysis-block h3 {
+  font-size: 0.95rem;
+  color: var(--accent);
+  margin-bottom: 8px;
+  letter-spacing: 0.5px;
+  font-weight: normal;
+}
+
+#analysisLive {
+  font-size: 0.9rem;
+}
+
+.glyph-tag {
+  display: inline-block;
+  padding: 3px 8px;
+  margin: 2px 4px 2px 0;
+  background: var(--bg-3);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  font-size: 0.8rem;
+  color: var(--text);
+}
+
+.muted {
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-style: italic;
+}
+
+/* ====== SPELL RESULT ====== */
+
+#spellResult {
+  font-size: 0.9rem;
+}
+
+.bar {
+  display: grid;
+  grid-template-columns: 90px 1fr 30px;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+  font-size: 0.85rem;
+}
+
+.bar-label {
+  color: var(--text-dim);
+}
+
+.bar-track {
+  height: 8px;
+  background: var(--bg-3);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.bar-fill {
+  height: 100%;
+  transition: width 0.4s ease;
+}
+
+.fill-power {
+  background: linear-gradient(90deg, var(--fire), var(--light));
+  box-shadow: 0 0 8px rgba(255, 117, 70, 0.4);
+}
+
+.fill-stability {
+  background: linear-gradient(90deg, var(--water), var(--plant));
+  box-shadow: 0 0 8px rgba(126, 209, 108, 0.4);
+}
+
+/* Элементы — цветные подписи */
+.element-water    { color: var(--water); }
+.element-fire     { color: var(--fire); }
+.element-wind     { color: var(--wind); }
+.element-earth    { color: var(--earth); }
+.element-light    { color: var(--light); }
+.element-plant    { color: var(--plant); }
+.element-barrier  { color: var(--barrier); }
+.element-mist     { color: #bcd6e0; }
+.element-firestorm{ color: #ffb347; }
+.element-lightdome{ color: #fff4b3; }
+.element-unknown  { color: var(--muted); }
+
+/* Риск */
+.risk-low       { color: var(--risk-low); }
+.risk-medium    { color: var(--risk-medium); }
+.risk-high      { color: var(--risk-high); }
+.risk-forbidden {
+  color: var(--risk-forbidden);
+  font-weight: bold;
+  text-shadow: 0 0 8px rgba(255, 58, 106, 0.6);
+}
+
+.notes {
+  margin-top: 10px;
+  padding-left: 20px;
+  font-size: 0.83rem;
+  color: var(--text-dim);
+  line-height: 1.5;
+}
+
+.notes li {
+  margin-bottom: 3px;
+}
+
+/* ====== TIPS ====== */
+
+.tips ol {
+  padding-left: 20px;
+  font-size: 0.83rem;
+  color: var(--text-dim);
+  line-height: 1.6;
+}
+
+.tips ol li {
+  margin-bottom: 3px;
+}
+
+/* ====== MODAL ====== */
+
+.modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(5, 5, 15, 0.85);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  animation: fade 0.2s;
+}
+
+.modal.hidden {
+  display: none;
+}
+
+@keyframes fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.modal-content {
+  background: linear-gradient(180deg, var(--bg-1), var(--bg-2));
+  border: 1px solid var(--accent-soft);
+  border-radius: var(--radius);
+  padding: 24px;
+  max-width: 760px;
+  width: 90%;
+  max-height: 85vh;
+  overflow-y: auto;
+  position: relative;
+  box-shadow: 0 0 40px var(--accent-glow), var(--shadow);
+}
+
+.modal-content.warn {
+  border-color: var(--risk-forbidden);
+  box-shadow: 0 0 40px rgba(255, 58, 106, 0.3), var(--shadow);
+}
+
+.modal-content h2 {
+  margin-bottom: 12px;
+  color: var(--accent);
+  font-weight: normal;
+}
+
+.modal-content.warn h2 {
+  color: var(--risk-forbidden);
+}
+
+.modal-content p {
+  margin-bottom: 12px;
+  line-height: 1.6;
+  color: var(--text);
+}
+
+.modal-content button.primary {
+  background: linear-gradient(135deg, var(--accent-soft), var(--accent));
+  color: #fff;
+  border: none;
+  padding: 10px 22px;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 1rem;
+  cursor: pointer;
+  margin-top: 8px;
+}
+
+.modal-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--text-dim);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: all 0.2s;
+}
+
+.modal-close:hover {
+  background: var(--bg-3);
+  color: var(--text);
+  border-color: var(--accent);
+}
+
+/* ====== BOOK LIST ====== */
+
+.book-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.book-entry {
+  background: var(--bg-3);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+}
+
+.book-entry:hover {
+  border-color: var(--accent);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3), 0 0 14px var(--accent-glow);
+}
+
+.book-entry canvas {
+  width: 100%;
+  height: 120px;
+  background: #0c0d1f;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  display: block;
+}
+
+.book-entry h3 {
+  font-size: 0.92rem;
+  margin-top: 8px;
+  color: var(--text);
+  font-weight: normal;
+}
+
+.book-entry p {
+  font-size: 0.78rem;
+  color: var(--text-dim);
+  margin-top: 2px;
+}
+
+.del-btn {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  background: rgba(255, 58, 106, 0.2);
+  border: 1px solid var(--risk-forbidden);
+  color: var(--risk-forbidden);
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 0.7rem;
+  line-height: 1;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.book-entry:hover .del-btn {
+  opacity: 1;
+}
+
+.del-btn:hover {
+  background: var(--risk-forbidden);
+  color: #fff;
+}
+
+/* ====== SCROLLBAR ====== */
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-1);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--bg-3);
+  border-radius: 5px;
+  border: 2px solid var(--bg-1);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-soft);
+}
+
+/* ====== SELECTION ====== */
+
+::selection {
+  background: var(--accent-soft);
+  color: #fff;
+}
