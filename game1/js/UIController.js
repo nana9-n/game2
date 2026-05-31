@@ -9,6 +9,8 @@ import { SpellCompiler } from './SpellCompiler.js';
 import { EffectEngine } from './EffectEngine.js';
 import { Spellbook } from './Spellbook.js';
 import { TutorialManager } from './TutorialManager.js';
+import { NeuralDetector } from './NeuralDetector.js';
+import { TrainingUI } from './TrainingUI.js';
 
 const TRIALS = [
   { id: 't1', text: '🔥 Потуши огонь водой: нарисуй круг + волну + стрелку вправо.',
@@ -40,6 +42,13 @@ export class UIController {
     this.engine = new EffectEngine(this.sceneCanvas);
     this.spellbook = new Spellbook();
     this.tutorial = new TutorialManager();
+    this.neural = new NeuralDetector();
+    this.neuralEnabled = true;
+    this._initNeural();
+    this.trainingUI = new TrainingUI(this.neural, this.drawCanvas, () => {
+      this.recorder.clear();
+      this._drawActivationGuide();
+    });
 
     this.mode = 'sandbox';
     this.autoActivate = false;
@@ -49,6 +58,32 @@ export class UIController {
     this._bindUI();
     this._drawActivationGuide();
     this._updateModeUI();
+  }
+
+
+  // ---------- Нейросетевой слой ----------
+
+  async _initNeural() {
+    try {
+      this.neural.loadDataset();
+      await this.neural.loadFromBrowser();
+    } catch (error) {
+      console.warn('Не удалось инициализировать нейросеть.', error);
+    } finally {
+      this._updateNeuralStatus();
+    }
+  }
+
+  _updateNeuralStatus() {
+    const badge = document.getElementById('nnStatus');
+    if (!badge) return;
+    if (this.neural.ready) {
+      badge.textContent = '🧠 ИИ активен';
+      badge.style.opacity = '1';
+    } else {
+      badge.textContent = '🧠 ИИ не обучен';
+      badge.style.opacity = '.5';
+    }
   }
 
   // ---------- Привязка интерфейса ----------
@@ -64,6 +99,11 @@ export class UIController {
       this._drawActivationGuide();
     };
     document.getElementById('btnCast').onclick = () => this._castSpell();
+
+    const trainButton = document.getElementById('btnTrainNN');
+    if (trainButton) trainButton.onclick = () => this.trainingUI.open();
+
+    document.addEventListener('witch-neural-status-changed', () => this._updateNeuralStatus());
 
     const toggle = document.getElementById('toggleAuto');
     toggle.onchange = e => { this.autoActivate = e.target.checked; };
@@ -152,7 +192,7 @@ export class UIController {
     }
   }
 
-  _analyze(live) {
+  async _analyze(live) {
     const strokes = this.recorder.strokes;
     if (!strokes.length) { this._clearAnalysis(); return; }
 
@@ -172,19 +212,47 @@ export class UIController {
     const circleInfo = report.activationCircle
       ? `Круг: замкнутость ${Math.round(report.quality.closureScore * 100)}%`
       : 'Круг активации не нарисован';
+    let neuralInfo = '';
+    if (!live && this.neuralEnabled && this.neural.ready) {
+      try {
+        const neural = await this.neural.predict(this.drawCanvas);
+        report.neural = neural;
+        if (neural && neural.confidence > 0.5) {
+          const color = neural.confidence > 0.75 ? 'var(--plant)' : 'var(--accent)';
+          neuralInfo = `<div style="margin-top:6px;color:${color}">🧠 ИИ видит: ${neural.name} (${Math.round(neural.confidence * 100)}%)</div>`;
+        }
+      } catch (error) {
+        console.warn('Нейросетевой анализ не удался.', error);
+      }
+    }
+
     liveEl.innerHTML = `
       <div>${tags || '<span class="muted">штрихи анализируются…</span>'}</div>
       <div class="muted" style="margin-top:6px">${circleInfo}</div>
+      ${neuralInfo}
     `;
   }
 
   // ---------- Активация заклинания ----------
 
-  _castSpell() {
+  async _castSpell() {
     const strokes = this.recorder.strokes;
     if (!strokes.length) return;
 
     const report = MagicRecognizer.analyze(strokes, this.drawCanvas.width);
+
+    if (this.neuralEnabled && this.neural.ready) {
+      try {
+        const neural = await this.neural.predict(this.drawCanvas);
+        report.neural = neural;
+        if (neural && neural.confidence > 0.8 && report.glyphs.some(g => g.type === neural.type)) {
+          report.neuralBonus = 8;
+        }
+      } catch (error) {
+        console.warn('Нейросетевой прогноз перед активацией не удался.', error);
+      }
+    }
+
     const target = this.mode === 'trial' ? { alive: false } : null;
     const spell = SpellCompiler.compile(report, { mode: this.mode, target });
 
