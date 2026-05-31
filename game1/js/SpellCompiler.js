@@ -289,6 +289,7 @@ export class SpellCompiler {
 
   static _resolveCombo(elements) {
     const has = e => elements.includes(e);
+    if (has('earth') && has('water') && has('light')) return { element: 'bloom', label: 'Земля + Вода + Свет = Цветение' };
     if (has('water') && has('plant')) return { element: 'bloom', label: 'Вода + Лозы = Цветущие лозы' };
     if (has('water') && has('wind')) return { element: 'mist', label: 'Вода + Ветер = Туман/Дождь' };
     if (has('fire') && has('wind')) return { element: 'firestorm', label: 'Огонь + Ветер = Огненный поток' };

@@ -10,21 +10,7 @@ import { Spellbook } from './Spellbook.js';
 import { TutorialManager } from './TutorialManager.js';
 import { NeuralDetector } from './NeuralDetector.js';
 import { TrainingUI } from './TrainingUI.js';
-
-const TRIALS = [
-  { id: 't1', text: '🔥 Потуши огонь водой: нарисуй круг + волну + стрелку вправо.',
-    win: s => s.element === 'water' && s.stability > 45 },
-  { id: 't2', text: '🪨 Построй каменную платформу: круг + треугольник + стрелка вверх.',
-    win: s => s.element === 'earth' && (s.shape === 'platform') },
-  { id: 't3', text: '💡 Освети тёмную комнату: круг + звезда/лучи + точка в центре.',
-    win: s => s.element === 'light' && s.stability > 40 },
-  { id: 't4', text: '🌿 Вырасти лозу до предмета: круг + ветвление + линия вверх.',
-    win: s => s.element === 'plant' },
-  { id: 't5', text: '🛡 Создай барьер от камней: круг + квадрат + параллельные линии.',
-    win: s => s.element === 'barrier' && s.stability > 50 },
-  { id: 't6', text: '🌪 Подними куб ветром: круг + спираль + стрелки вверх.',
-    win: s => s.element === 'wind' }
-];
+import { LevelManager } from './LevelManager.js';
 
 export class UIController {
   constructor() {
@@ -41,6 +27,7 @@ export class UIController {
     this.engine = new EffectEngine(this.sceneCanvas);
     this.spellbook = new Spellbook();
     this.tutorial = new TutorialManager();
+    this.levels = new LevelManager();
     this.neural = new NeuralDetector();
     this.neuralEnabled = true;
     this._initNeural();
@@ -51,8 +38,10 @@ export class UIController {
 
     this.mode = 'sandbox';
     this.autoActivate = false;
-    this.currentTrial = 0;
+    this.gameWon = false;
     this.lastReport = null;
+
+    this.engine.onSpellHit = (spell, point, area, effect) => this._handleSpellHit(spell, point, area, effect);
 
     this._bindUI();
     this._drawActivationGuide();
@@ -111,8 +100,55 @@ export class UIController {
     document.querySelectorAll('[data-close]').forEach(el => {
       el.onclick = () => {
         document.getElementById('bookModal')?.classList.add('hidden');
+        document.getElementById('levelWinModal')?.classList.add('hidden');
       };
     });
+
+    document.getElementById('btnLevelReset')?.addEventListener('click', () => this._resetLevel());
+    document.getElementById('btnLevelMap')?.addEventListener('click', () => this._toggleLevelMap());
+    document.getElementById('btnNextLevel')?.addEventListener('click', () => this._nextLevel());
+    document.getElementById('btnWinNext')?.addEventListener('click', () => this._nextLevel());
+    document.getElementById('btnWinMap')?.addEventListener('click', () => {
+      document.getElementById('levelWinModal')?.classList.add('hidden');
+      this._showLevelMap(true);
+    });
+  }
+
+  _handleHotkeys(event) {
+    const key = event.key.toLowerCase();
+    const target = event.target;
+    const isTyping = target && ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName);
+    if (isTyping) return;
+
+    if ((event.ctrlKey || event.metaKey) && key === 'z' && !event.shiftKey) {
+      event.preventDefault();
+      this._undoStroke();
+    } else if (((event.ctrlKey || event.metaKey) && key === 'y') || ((event.ctrlKey || event.metaKey) && event.shiftKey && key === 'z')) {
+      event.preventDefault();
+      this._redoStroke();
+    } else if ((event.ctrlKey || event.metaKey) && key === 'enter') {
+      event.preventDefault();
+      this._castSpell();
+    } else if ((event.ctrlKey || event.metaKey) && (key === 'backspace' || key === 'delete')) {
+      event.preventDefault();
+      this._clearDrawing();
+    }
+  }
+
+  _undoStroke() {
+    this.recorder.undo();
+    this._onDraw();
+  }
+
+  _redoStroke() {
+    this.recorder.redo();
+    this._onDraw();
+  }
+
+  _clearDrawing() {
+    this.recorder.clear();
+    this._clearAnalysis();
+    this._drawActivationGuide();
   }
 
   _handleHotkeys(event) {
@@ -169,12 +205,13 @@ export class UIController {
   _updateModeUI() {
     const hint = document.getElementById('trialHint');
     if (this.mode === 'tutorial') {
+      this._exitGameMode();
       this.tutorial.reset();
       hint.textContent = this.tutorial.getHint();
     } else if (this.mode === 'trial') {
-      this.currentTrial = 0;
-      hint.textContent = TRIALS[0].text;
+      this._enterGameMode();
     } else {
+      this._exitGameMode();
       hint.textContent = 'Свободная мастерская: рисуй любые схемы. Удачные сохраняй в Книгу.';
     }
   }
@@ -303,29 +340,161 @@ export class UIController {
       this.spellbook.add(strokes, spell);
     }
 
-    // Проверка испытания
-    if (this.mode === 'trial') {
-      this._checkTrial(spell);
-    }
+    if (this.mode === 'trial') this._updateGameHud();
   }
 
-  _checkTrial(spell) {
-    const trial = TRIALS[this.currentTrial];
-    const hint = document.getElementById('trialHint');
-    if (trial && trial.win(spell)) {
-      hint.innerHTML = `✅ Испытание пройдено!<br>` +
-        (this.currentTrial + 1 < TRIALS.length
-          ? `Следующее: ${TRIALS[this.currentTrial + 1].text}`
-          : '🏆 Все испытания пройдены! Ты — настоящий мастер чертёжной магии.');
-      this.currentTrial = Math.min(this.currentTrial + 1, TRIALS.length - 1);
-      setTimeout(() => {
-        this.recorder.clear();
-        this._clearAnalysis();
-        this._drawActivationGuide();
-      }, 1500);
-    } else {
-      hint.innerHTML = `❌ Эффект не подходит. ${trial.text}`;
+
+  // ---------- Игровой режим ----------
+
+  _enterGameMode() {
+    document.getElementById('gameHud')?.classList.remove('hidden');
+    const level = this.levels.objects.length ? this.levels.currentLevel() : this.levels.loadSavedOrFirst();
+    this.gameWon = false;
+    this.engine.setGameObjects(this.levels.objects);
+    this._showLevelMap(false);
+    this._updateGameHud(level);
+  }
+
+  _exitGameMode() {
+    document.getElementById('gameHud')?.classList.add('hidden');
+    document.getElementById('levelWinModal')?.classList.add('hidden');
+    this.engine.setGameObjects([]);
+    this.gameWon = false;
+  }
+
+  _resetLevel() {
+    if (this.mode !== 'trial') return;
+    this.levels.reset();
+    this.gameWon = false;
+    this.engine.setGameObjects(this.levels.objects);
+    document.getElementById('btnNextLevel')?.classList.add('hidden');
+    document.getElementById('levelWinModal')?.classList.add('hidden');
+    this._showLevelMap(false);
+    this._updateGameHud();
+  }
+
+  _nextLevel() {
+    if (this.mode !== 'trial') return;
+    document.getElementById('levelWinModal')?.classList.add('hidden');
+    if (!this.levels.isLastLevel() || this.gameWon) this.levels.nextLevel();
+    this.gameWon = false;
+    this.engine.setGameObjects(this.levels.objects);
+    document.getElementById('btnNextLevel')?.classList.add('hidden');
+    this._showLevelMap(false);
+    this._updateGameHud();
+    this.recorder.clear();
+    this._clearAnalysis();
+    this._drawActivationGuide();
+  }
+
+  _toggleLevelMap() {
+    const map = document.getElementById('levelMap');
+    this._showLevelMap(map?.classList.contains('hidden'));
+  }
+
+  _showLevelMap(show) {
+    const map = document.getElementById('levelMap');
+    if (!map) return;
+    map.classList.toggle('hidden', !show);
+    if (show) this._renderLevelMap();
+  }
+
+  _renderLevelMap() {
+    const map = document.getElementById('levelMap');
+    if (!map) return;
+    map.innerHTML = this.levels.levels.map((level, index) => {
+      const completed = this.levels.isCompleted(index);
+      const unlocked = this.levels.isUnlocked(index);
+      const active = index === this.levels.index;
+      return `
+        <button class="level-card ${active ? 'active' : ''} ${completed ? 'completed' : ''}" data-level="${index}" ${unlocked ? '' : 'disabled'}>
+          <span>${index + 1}</span>
+          <strong>${level.title}</strong>
+          <small>${completed ? 'Пройден' : unlocked ? 'Доступен' : 'Закрыт'}</small>
+        </button>`;
+    }).join('');
+    map.querySelectorAll('[data-level]').forEach(button => {
+      button.addEventListener('click', () => {
+        const index = Number(button.dataset.level);
+        if (!this.levels.isUnlocked(index)) return;
+        this.levels.loadLevel(index);
+        this.gameWon = false;
+        this.engine.setGameObjects(this.levels.objects);
+        document.getElementById('btnNextLevel')?.classList.add('hidden');
+        this._showLevelMap(false);
+        this._updateGameHud();
+      });
+    });
+  }
+
+  _handleSpellHit(spell, point, area) {
+    if (this.mode !== 'trial' || this.gameWon) return;
+
+    const messages = [];
+    for (const object of this.levels.objects) {
+      const distance = Math.hypot(object.x - point.x, object.y - point.y);
+      if (distance > area * 0.72 + object.radius) continue;
+      const result = object.applySpell(spell);
+      if (result.message) messages.push(result.message);
     }
+
+    this._updateGameHud(this.levels.currentLevel(), false);
+    if (messages.length) {
+      document.getElementById('trialHint').textContent = messages.join('\n');
+    } else {
+      const level = this.levels.currentLevel();
+      document.getElementById('trialHint').textContent = `Заклинание не попало в цель. ${level.description}`;
+    }
+
+    if (this.levels.checkWin()) this._completeLevel();
+  }
+
+  _completeLevel() {
+    if (this.gameWon) return;
+    this.gameWon = true;
+    this.levels.completeCurrent();
+    const level = this.levels.currentLevel();
+    document.getElementById('btnNextLevel')?.classList.toggle('hidden', this.levels.isLastLevel());
+    document.getElementById('levelWinTitle').textContent = this.levels.isLastLevel()
+      ? '🏆 Финал пройден!'
+      : '✅ Уровень пройден!';
+    document.getElementById('levelWinText').textContent = this.levels.isLastLevel()
+      ? 'Ты прошёл всю карту мастерской. ' + level.reward
+      : `${level.reward} Следующий уровень открыт.`;
+    document.getElementById('btnWinNext')?.classList.toggle('hidden', this.levels.isLastLevel());
+    document.getElementById('levelWinModal')?.classList.remove('hidden');
+    this._updateGameHud();
+  }
+
+  _updateGameHud(level = this.levels.currentLevel(), updateHint = true) {
+    if (this.mode !== 'trial' || !level) return;
+    const progress = this.levels.getProgress();
+    const number = this.levels.index + 1;
+    document.getElementById('levelTitle').textContent = `${number}. ${level.title}`;
+    document.getElementById('levelGoal').textContent = `🎯 Цель: ${level.description}`;
+    document.getElementById('levelHint').textContent = `💡 ${level.hint}`;
+    document.getElementById('levelProgressFill').style.width = `${progress.total}%`;
+    if (updateHint) document.getElementById('trialHint').textContent = `${level.title}: ${level.description}`;
+
+    const stars = document.getElementById('levelStars');
+    if (stars) {
+      stars.innerHTML = this.levels.levels.map((item, index) => {
+        const done = this.levels.isCompleted(index);
+        const active = index === this.levels.index;
+        return `<span class="${done ? 'done' : ''} ${active ? 'active' : ''}">${index + 1}</span>`;
+      }).join('');
+    }
+
+    const objectProgress = document.getElementById('objectProgress');
+    if (objectProgress) {
+      objectProgress.innerHTML = progress.items.map(item => `
+        <div class="object-progress-row">
+          <span>${item.objectLabel}: ${item.label}</span>
+          <div class="mini-track"><div style="width:${item.value}%"></div></div>
+        </div>`).join('');
+    }
+
+    this._renderLevelMap();
   }
 
   // ---------- Отрисовка результата ----------

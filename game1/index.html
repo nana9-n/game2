@@ -3,32 +3,31 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>🎩 Witch Hat Atelier — Чертёжная магия</title>
+  <title>Witch Hat Atelier — Чертёжная магия</title>
   <link rel="stylesheet" href="css/style.css" />
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.20.0/dist/tf.min.js"></script>
 </head>
 <body>
-
   <header class="topbar">
-    <h1>🎩 Witch Hat Atelier</h1>
-    <p class="subtitle">Магия — это письмо. Чертёж — это заклинание.</p>
+    <div>
+      <h1>Witch Hat Atelier</h1>
+      <p class="subtitle">Чертёжная магия, уровни и интерактивная сцена.</p>
+    </div>
 
-    <nav class="mode-switch">
-      <button data-mode="tutorial">📖 Обучение</button>
-      <button data-mode="sandbox" class="active">🧪 Мастерская</button>
-      <button data-mode="trial">⚔️ Испытания</button>
-      <button data-mode="book">📕 Книга</button>
+    <nav class="mode-switch" aria-label="Режимы">
+      <button data-mode="tutorial">Обучение</button>
+      <button data-mode="sandbox" class="active">Мастерская</button>
+      <button data-mode="trial">Игра</button>
+      <button data-mode="book">Книга</button>
     </nav>
   </header>
 
   <main class="layout">
-
-    <!-- ЛЕВАЯ КОЛОНКА: рисование -->
     <section class="panel panel-draw">
       <div class="panel-header">
         <h2>Чертёжный круг</h2>
         <div class="ink-meter" title="Запас чернил">
-          <span>✒</span>
+          <span>Чернила</span>
           <div class="ink-track"><div id="inkFill" class="ink-fill"></div></div>
         </div>
       </div>
@@ -42,98 +41,131 @@
         <button id="btnUndo" title="Отменить последний штрих (Ctrl+Z)">↶ Отменить</button>
         <button id="btnClear" title="Очистить холст (Ctrl+Backspace)">✕ Очистить</button>
         <button id="btnCast" class="primary" title="Активировать заклинание (Ctrl+Enter)">⚡ Активировать</button>
-        <button id="btnTrainNN" title="Обучить нейросеть распознавать твои символы">🧠 Обучить нейросеть</button>
-        <span id="nnStatus" style="font-size:.8rem;opacity:.5;align-self:center;">🧠 ИИ не обучен</span>
+        <button id="btnTrainNN" title="Обучить нейросеть распознавать твои символы">🧠 Обучить ИИ</button>
+        <span id="nnStatus" class="status-pill">ИИ не обучен</span>
 
         <label class="toggle">
           <input type="checkbox" id="toggleAuto" />
-          <span>Авто-активация по замыканию круга</span>
+          <span>Авто-активация</span>
         </label>
       </div>
+
+      <section class="analysis-panel" aria-label="Анализ схемы">
+        <div class="analysis-grid">
+          <section class="analysis-block">
+            <h3>Распознано</h3>
+            <div id="analysisLive">
+              <p class="muted">Начни рисовать круг активации и знак внутри…</p>
+            </div>
+          </section>
+
+          <section class="analysis-block">
+            <h3>Заклинание</h3>
+            <div id="spellResult"></div>
+          </section>
+        </div>
+
+        <section class="analysis-block tips">
+          <h3>Правила</h3>
+          <ol>
+            <li>Сначала — знаки и стрелки внутри.</li>
+            <li>Последним — замкнутый круг активации.</li>
+            <li>Ctrl+Z — отмена, Ctrl+Shift+Z/Ctrl+Y — возврат, Ctrl+Enter — активация.</li>
+          </ol>
+        </section>
+      </section>
     </section>
 
-    <!-- ЦЕНТР: сцена эффектов -->
     <section class="panel panel-scene">
-      <div class="panel-header">
+      <div class="panel-header scene-header">
         <h2>Сцена</h2>
-        <p id="trialHint" class="trial-hint">
-          Свободная мастерская: рисуй любые схемы. Удачные сохраняй в Книгу.
-        </p>
+        <p id="trialHint" class="trial-hint">Свободная мастерская: рисуй любые схемы. Удачные сохраняй в Книгу.</p>
       </div>
+
+      <section id="gameHud" class="game-hud hidden" aria-label="Игровой интерфейс">
+        <div class="hud-topline">
+          <div>
+            <span class="eyebrow">Уровень</span>
+            <h3 id="levelTitle">Уровень 1 — Название</h3>
+          </div>
+          <div id="levelStars" class="level-stars"></div>
+        </div>
+
+        <div class="goal-card">
+          <p id="levelGoal">🎯 Цель: —</p>
+          <div class="progress-line"><div id="levelProgressFill"></div></div>
+          <div id="objectProgress" class="object-progress"></div>
+          <p id="levelHint" class="muted">💡 Подсказка появится здесь.</p>
+        </div>
+
+        <div class="hud-actions">
+          <button id="btnLevelReset">↺ Заново</button>
+          <button id="btnLevelMap">⮜ Карта уровней</button>
+          <button id="btnNextLevel" class="primary hidden">➡ Следующий уровень</button>
+        </div>
+
+        <div id="levelMap" class="level-map hidden"></div>
+      </section>
+
       <canvas id="sceneCanvas" width="520" height="380"></canvas>
 
       <div class="legend">
-        <h3>Алфавит знаков</h3>
-        <ul class="glyph-legend">
-          <li><span class="element-water">∿ волна</span> — вода</li>
-          <li><span class="element-fire">⚡ зигзаг</span> — огонь</li>
-          <li><span class="element-wind">◯ спираль</span> — ветер</li>
-          <li><span class="element-earth">△ треугольник</span> — земля</li>
-          <li><span class="element-light">★ звезда</span> — свет</li>
-          <li><span class="element-plant">⋎ ветвь</span> — растение</li>
-          <li><span class="element-barrier">☐ квадрат</span> — барьер</li>
-          <li>→ стрелка — направление</li>
-          <li>• точка — фокус</li>
-          <li>◎ кольца — область</li>
-        </ul>
+        <div>
+          <h3>Алфавит знаков</h3>
+          <ul class="glyph-legend">
+            <li><span class="element-water">∿ волна</span> — вода</li>
+            <li><span class="element-fire">⚡ зигзаг</span> — огонь</li>
+            <li><span class="element-wind">◯ спираль</span> — ветер</li>
+            <li><span class="element-earth">△ треугольник</span> — земля</li>
+            <li><span class="element-light">★ звезда</span> — свет</li>
+            <li><span class="element-plant">⋎ ветвь</span> — растение</li>
+            <li><span class="element-barrier">☐ квадрат</span> — барьер</li>
+            <li>→ стрелка — направление</li>
+            <li>• точка — фокус</li>
+            <li>◎ кольца — область</li>
+          </ul>
+        </div>
 
-        <h3>Комбинации знаков</h3>
-        <ul class="combo-legend">
-          <li><b>Вода + Ветер</b> — туман/дождь, на сцене даёт шторм.</li>
-          <li><b>Огонь + Ветер</b> — огненный поток/вихрь.</li>
-          <li><b>Земля + Растение</b> — корни и лоза.</li>
-          <li><b>Свет + Барьер</b> — световой купол.</li>
-          <li><b>Огонь + Вода</b> — паровая завеса.</li>
-          <li><b>Земля + Огонь</b> — магма.</li>
-          <li><b>Земля + Вода</b> — грязь и рост.</li>
-          <li><b>Свет + Растение</b> — бурное цветение.</li>
-          <li><b>Свет + Вода</b> — призматический луч.</li>
-          <li><b>Вода + Лозы</b> — цветущие лозы с цветами.</li>
-        </ul>
+        <div>
+          <h3>Комбинации знаков</h3>
+          <ul class="combo-legend">
+            <li><b>Вода + Ветер</b> — туман/дождь, на сцене даёт шторм.</li>
+            <li><b>Огонь + Ветер</b> — огненный поток/вихрь.</li>
+            <li><b>Земля + Растение</b> — корни и лоза.</li>
+            <li><b>Свет + Барьер</b> — световой купол.</li>
+            <li><b>Огонь + Вода</b> — паровая завеса.</li>
+            <li><b>Земля + Огонь</b> — магма.</li>
+            <li><b>Земля + Вода</b> — грязь и рост.</li>
+            <li><b>Свет + Растение</b> — бурное цветение.</li>
+            <li><b>Свет + Вода</b> — призматический луч.</li>
+            <li><b>Вода + Лозы</b> — цветущие лозы с цветами.</li>
+            <li><b>Земля + Вода + Свет</b> — цветение для семечка.</li>
+          </ul>
+        </div>
       </div>
     </section>
-
-    <!-- ПРАВАЯ КОЛОНКА: анализ -->
-    <aside class="panel panel-analysis">
-      <div class="panel-header">
-        <h2>Анализ схемы</h2>
-      </div>
-
-      <section class="analysis-block">
-        <h3>Распознано</h3>
-        <div id="analysisLive">
-          <p class="muted">Начни рисовать круг активации и знак внутри…</p>
-        </div>
-      </section>
-
-      <section class="analysis-block">
-        <h3>Заклинание</h3>
-        <div id="spellResult"></div>
-      </section>
-
-      <section class="analysis-block tips">
-        <h3>Правила чертежа</h3>
-        <ol>
-          <li>Сначала — знаки и стрелки внутри.</li>
-          <li>Последним — замкнутый круг активации.</li>
-          <li>Чем ровнее линии — тем стабильнее эффект.</li>
-          <li>Толстые линии = сильнее, но затратнее.</li>
-          <li>Ctrl+Z — отмена, Ctrl+Shift+Z/Ctrl+Y — возврат, Ctrl+Enter — активация.</li>
-        </ol>
-      </section>
-    </aside>
   </main>
 
-  <!-- МОДАЛКА: книга заклинаний -->
   <div id="bookModal" class="modal hidden">
     <div class="modal-content">
       <button class="modal-close" data-close>✕</button>
-      <h2>📕 Книга заклинаний</h2>
+      <h2>Книга заклинаний</h2>
       <p class="muted">Сохраняются схемы со стабильностью выше 50. Клик — повторить.</p>
       <div id="bookList" class="book-list"></div>
     </div>
   </div>
 
+  <div id="levelWinModal" class="modal hidden">
+    <div class="modal-content victory-card">
+      <button class="modal-close" data-close>✕</button>
+      <h2 id="levelWinTitle">Уровень пройден</h2>
+      <p id="levelWinText"></p>
+      <div class="modal-actions">
+        <button id="btnWinMap">Карта уровней</button>
+        <button id="btnWinNext" class="primary">Следующий уровень</button>
+      </div>
+    </div>
+  </div>
 
   <script type="module" src="js/main.js"></script>
 </body>

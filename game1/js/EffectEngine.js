@@ -44,7 +44,10 @@ export class EffectEngine {
     this.activeEffects = [];
     this.labels = [];
     this.flashes = [];
+    this.gameObjects = [];
+    this.onSpellHit = null;
     this.lastTime = performance.now();
+    this.lastDt = 0.016;
     this._loop = this._loop.bind(this);
     requestAnimationFrame(this._loop);
   }
@@ -58,6 +61,7 @@ export class EffectEngine {
 
     this.activeEffects.push(effect);
     this._impact(effect, spell.combo ? `✦ ${spell.combo}` : null);
+    this._notifySpellHit(spell, effect);
 
     if (combo) {
       this._triggerCombo(combo, effect);
@@ -190,7 +194,17 @@ export class EffectEngine {
     comboEffect.origin = center;
     this.activeEffects.push(comboEffect);
     this._impact(comboEffect, recipe.label);
+    this._notifySpellHit(spell, comboEffect);
     this._addLabel(recipe.label, center, comboEffect.palette[0]);
+  }
+
+  setGameObjects(objects = []) {
+    this.gameObjects = objects;
+  }
+
+  _notifySpellHit(spell, effect) {
+    if (!this.onSpellHit) return;
+    this.onSpellHit(spell, effect.origin, effect.area, effect);
   }
 
   _impact(effect, label) {
@@ -224,6 +238,7 @@ export class EffectEngine {
   _loop(now) {
     const dt = Math.min(0.05, (now - this.lastTime) / 1000 || 0.016);
     this.lastTime = now;
+    this.lastDt = dt;
 
     this._fadeScene();
     this._update(dt);
@@ -426,10 +441,15 @@ export class EffectEngine {
 
   _draw() {
     const ctx = this.ctx;
+    this._drawGameObjects(ctx, this.lastDt);
     this._drawFlashes(ctx);
     for (const effect of this.activeEffects) this._drawStructures(ctx, effect);
     this.particles.draw(ctx);
     this._drawLabels(ctx);
+  }
+
+  _drawGameObjects(ctx, dt) {
+    for (const object of this.gameObjects) object.draw(ctx, dt);
   }
 
   _drawFlashes(ctx) {
