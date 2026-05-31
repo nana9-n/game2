@@ -151,6 +151,43 @@ export class UIController {
     this._drawActivationGuide();
   }
 
+  _handleHotkeys(event) {
+    const key = event.key.toLowerCase();
+    const target = event.target;
+    const isTyping = target && ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName);
+    if (isTyping) return;
+
+    if ((event.ctrlKey || event.metaKey) && key === 'z' && !event.shiftKey) {
+      event.preventDefault();
+      this._undoStroke();
+    } else if (((event.ctrlKey || event.metaKey) && key === 'y') || ((event.ctrlKey || event.metaKey) && event.shiftKey && key === 'z')) {
+      event.preventDefault();
+      this._redoStroke();
+    } else if ((event.ctrlKey || event.metaKey) && key === 'enter') {
+      event.preventDefault();
+      this._castSpell();
+    } else if ((event.ctrlKey || event.metaKey) && (key === 'backspace' || key === 'delete')) {
+      event.preventDefault();
+      this._clearDrawing();
+    }
+  }
+
+  _undoStroke() {
+    this.recorder.undo();
+    this._onDraw();
+  }
+
+  _redoStroke() {
+    this.recorder.redo();
+    this._onDraw();
+  }
+
+  _clearDrawing() {
+    this.recorder.clear();
+    this._clearAnalysis();
+    this._drawActivationGuide();
+  }
+
   _switchMode(mode) {
     if (mode === 'book') {
       this._openBook();
