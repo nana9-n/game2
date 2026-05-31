@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>🎩 Witch Hat Atelier — Чертёжная магия</title>
   <link rel="stylesheet" href="css/style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.20.0/dist/tf.min.js"></script>
 </head>
 <body>
 
@@ -41,6 +42,8 @@
         <button id="btnUndo" title="Отменить последний штрих">↶ Отменить</button>
         <button id="btnClear" title="Очистить холст">✕ Очистить</button>
         <button id="btnCast" class="primary" title="Активировать заклинание">⚡ Активировать</button>
+        <button id="btnTrainNN" title="Обучить нейросеть распознавать твои символы">🧠 Обучить нейросеть</button>
+        <span id="nnStatus" style="font-size:.8rem;opacity:.5;align-self:center;">🧠 ИИ не обучен</span>
 
         <label class="toggle">
           <input type="checkbox" id="toggleAuto" />
