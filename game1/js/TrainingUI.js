@@ -40,7 +40,7 @@ export class TrainingUI {
     statsEl.innerHTML = `
       <div style="margin-bottom:8px;color:var(--text)">Всего примеров: <strong>${total}</strong></div>
       ${rows}
-      <p class="muted" style="margin-top:10px">Совет: для уверенного распознавания собери хотя бы 8–10 вариантов каждого глифа.</p>
+      <p class="muted" style="margin-top:10px">Совет: рисуй примеры по одному знаку без круга. Минимум для обучения — 2 разных знака и по 3 примера каждого, лучше 8–10.</p>
     `;
   }
 
@@ -52,7 +52,7 @@ export class TrainingUI {
       <div class="modal-content" style="border-color:var(--accent);box-shadow:0 0 42px rgba(164,143,255,.3), var(--shadow)">
         <button class="modal-close" data-close title="Закрыть">✕</button>
         <h2>🧠 Обучение нейросети</h2>
-        <p class="muted">Нарисуй глиф на холсте, выбери его тип и добавь пример. Модель учится прямо в браузере и сохраняется локально.</p>
+        <p class="muted">Для обучения рисуй только один знак без круга активации: например одну волну для воды или одну стрелку. Круг, волну и стрелки ИИ потом распознаёт по отдельным штрихам в общей схеме.</p>
 
         <div style="display:grid;grid-template-columns:minmax(180px,1fr) auto;gap:10px;align-items:end;margin:16px 0;padding:12px;background:var(--bg-3);border:1px solid var(--line);border-radius:12px">
           <label style="display:flex;flex-direction:column;gap:6px;color:var(--text-dim)">
@@ -124,7 +124,7 @@ export class TrainingUI {
     const metrics = progressEl.querySelector('#trainMetrics');
 
     try {
-      this._msg('Нейросеть учится на твоих глифах…', 'ok');
+      this._msg('Нейросеть учится на отдельных знаках без круга…', 'ok');
       await this.neural.train((epoch, epochs, logs) => {
         const progress = Math.round((epoch / epochs) * 100);
         const acc = this._percent(logs.acc ?? logs.accuracy);

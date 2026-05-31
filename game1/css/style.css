@@ -470,19 +470,6 @@ body::after {
   text-shadow: 0 1px 0 rgba(255, 238, 198, 0.7);
 }
 
-#btnTrainNN {
-  background: linear-gradient(135deg, #5b3cc4, #a48fff, #d48cff);
-  color: #fff;
-  border-color: var(--accent);
-  box-shadow: 0 0 14px rgba(164, 143, 255, 0.35);
-}
-
-#btnTrainNN:hover {
-  background: linear-gradient(135deg, #6c4de0, #b7a6ff, #e3a4ff);
-  box-shadow: 0 0 22px rgba(212, 140, 255, 0.45);
-  transform: translateY(-1px);
-}
-
 .toggle {
   display: flex;
   align-items: center;

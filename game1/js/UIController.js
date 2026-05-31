@@ -4,7 +4,6 @@
  * Управляет режимами, панелью анализа, книгой, испытаниями, обучением.
  */
 import { StrokeRecorder } from './StrokeRecorder.js';
-import { MagicRecognizer } from './MagicRecognizer.js';
 import { SpellCompiler } from './SpellCompiler.js';
 import { EffectEngine } from './EffectEngine.js';
 import { Spellbook } from './Spellbook.js';
@@ -167,12 +166,12 @@ export class UIController {
   // ---------- События рисования ----------
 
   _onDraw() {
-    // Живой анализ (лёгкий)
+    // Живой анализ: только нейросеть, без эвристического распознавания.
     this._analyze(true);
   }
 
-  _onStrokeEnd() {
-    this._analyze(false);
+  async _onStrokeEnd() {
+    await this._analyze(false);
     const report = this.lastReport;
 
     // Автоактивация по замыканию круга (канонический режим)
@@ -196,7 +195,28 @@ export class UIController {
     const strokes = this.recorder.strokes;
     if (!strokes.length) { this._clearAnalysis(); return; }
 
-    const report = MagicRecognizer.analyze(strokes, this.drawCanvas.width);
+    const liveEl = document.getElementById('analysisLive');
+    if (!this.neuralEnabled || !this.neural.ready) {
+      this.lastReport = null;
+      liveEl.innerHTML = '<p class="muted">🧠 Сначала обучи нейросеть: рисуй отдельные знаки без круга и добавляй примеры.</p>';
+      return;
+    }
+
+    let report = null;
+    try {
+      report = await this.neural.analyzeStrokes(strokes, this.drawCanvas.width);
+    } catch (error) {
+      console.warn('Нейросетевое распознавание штрихов не удалось.', error);
+      liveEl.innerHTML = '<p class="muted">ИИ не смог распознать штрихи. Попробуй ещё раз или дообучи модель.</p>';
+      return;
+    }
+
+    if (!report) {
+      this.lastReport = null;
+      liveEl.innerHTML = '<p class="muted">ИИ пока не готов к распознаванию.</p>';
+      return;
+    }
+
     this.lastReport = report;
 
     // Обновляем индикатор чернил
@@ -204,30 +224,21 @@ export class UIController {
     const inkPercent = Math.max(0, 100 - Math.min(100, ink / 40));
     document.getElementById('inkFill').style.width = inkPercent + '%';
 
-    // Живая панель: что распознано
-    const liveEl = document.getElementById('analysisLive');
-    const glyphs = report.glyphs;
-    const tags = glyphs.map(g =>
-      `<span class="glyph-tag">${this._glyphLabel(g.type)}</span>`).join('');
+    // Панель распознавания теперь показывает только TensorFlow.js-предсказания
+    // по отдельным штрихам, чтобы круг не смешивался со знаком внутри.
+    const tags = report.glyphs.map(g => {
+      const confidence = Number.isFinite(g.score) ? ` ${Math.round(g.score * 100)}%` : '';
+      return `<span class="glyph-tag">${this._glyphLabel(g.type)}${confidence}</span>`;
+    }).join('');
     const circleInfo = report.activationCircle
-      ? `Круг: замкнутость ${Math.round(report.quality.closureScore * 100)}%`
-      : 'Круг активации не нарисован';
-    let neuralInfo = '';
-    if (!live && this.neuralEnabled && this.neural.ready) {
-      try {
-        const neural = await this.neural.predict(this.drawCanvas);
-        report.neural = neural;
-        if (neural && neural.confidence > 0.5) {
-          const color = neural.confidence > 0.75 ? 'var(--plant)' : 'var(--accent)';
-          neuralInfo = `<div style="margin-top:6px;color:${color}">🧠 ИИ видит: ${neural.name} (${Math.round(neural.confidence * 100)}%)</div>`;
-        }
-      } catch (error) {
-        console.warn('Нейросетевой анализ не удался.', error);
-      }
-    }
+      ? `Круг: ИИ распознал отдельно · замкнутость ${Math.round(report.quality.closureScore * 100)}%`
+      : 'Круг активации ИИ не распознал отдельным штрихом';
+    const neuralInfo = !live
+      ? '<div style="margin-top:6px;color:var(--accent)">🧠 Распознавание: TensorFlow.js по отдельным знакам</div>'
+      : '';
 
     liveEl.innerHTML = `
-      <div>${tags || '<span class="muted">штрихи анализируются…</span>'}</div>
+      <div>${tags || '<span class="muted">ИИ анализирует отдельные штрихи…</span>'}</div>
       <div class="muted" style="margin-top:6px">${circleInfo}</div>
       ${neuralInfo}
     `;
@@ -239,19 +250,15 @@ export class UIController {
     const strokes = this.recorder.strokes;
     if (!strokes.length) return;
 
-    const report = MagicRecognizer.analyze(strokes, this.drawCanvas.width);
-
-    if (this.neuralEnabled && this.neural.ready) {
-      try {
-        const neural = await this.neural.predict(this.drawCanvas);
-        report.neural = neural;
-        if (neural && neural.confidence > 0.8 && report.glyphs.some(g => g.type === neural.type)) {
-          report.neuralBonus = 8;
-        }
-      } catch (error) {
-        console.warn('Нейросетевой прогноз перед активацией не удался.', error);
-      }
+    if (!this.neuralEnabled || !this.neural.ready) {
+      document.getElementById('analysisLive').innerHTML =
+        '<p class="muted">🧠 Заклинание не активировано: сначала обучи TensorFlow.js распознавать твои знаки.</p>';
+      return;
     }
+
+    const report = await this.neural.analyzeStrokes(strokes, this.drawCanvas.width);
+    if (!report) return;
+    this.lastReport = report;
 
     const target = this.mode === 'trial' ? { alive: false } : null;
     const spell = SpellCompiler.compile(report, { mode: this.mode, target });
