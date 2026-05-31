@@ -4,7 +4,23 @@
  * Здесь живёт «грамматика глифов»: какой знак → какой элемент,
  * как модификаторы влияют на форму, силу, длительность, риск.
  */
-import { GlyphTypes } from './GlyphDetector.js';
+const GlyphTypes = {
+  CIRCLE: 'circle',
+  BROKEN_CIRCLE: 'brokenCircle',
+  LINE: 'line',
+  ARROW: 'arrow',
+  WAVE: 'wave',
+  ZIGZAG: 'zigzag',
+  SPIRAL: 'spiral',
+  TRIANGLE: 'triangle',
+  SQUARE: 'square',
+  STAR: 'star',
+  DOT: 'dot',
+  BRANCH: 'branch',
+  PARALLEL: 'parallelLines',
+  CONCENTRIC: 'concentricCircles',
+  UNKNOWN: 'unknown'
+};
 
 // Соответствие основного знака → элемент
 const ELEMENT_MAP = {
@@ -32,8 +48,8 @@ const DEFAULT_SHAPE = {
 export class SpellCompiler {
 
   /**
-   * Собирает SpellDescriptor из отчёта MagicRecognizer.
-   * @param {object} report  результат MagicRecognizer.analyze
+   * Собирает SpellDescriptor из отчёта распознавания TensorFlow.js.
+   * @param {object} report  результат NeuralDetector.analyzeStrokes
    * @param {object} options { mode: 'sandbox'|'tutorial', target: {...} }
    */
   static compile(report, options = {}) {
