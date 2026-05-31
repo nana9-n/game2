@@ -83,11 +83,18 @@ export class SpellCompiler {
 
     // ---------- 3. Направление (стрелки/линии) ----------
     const arrows = glyphs.filter(g => g.type === GlyphTypes.ARROW);
-    let direction = { x: 0, y: 0 };
-    if (arrows.length) {
-      for (const a of arrows) { direction.x += a.dir.x; direction.y += a.dir.y; }
+    const arrowVectors = arrows.map(a => ({
+      x: a.dir?.x || 0,
+      y: a.dir?.y || 0,
+      angle: Math.atan2(a.dir?.y || 0, a.dir?.x || 1),
+      confidence: a.score || 0
+    }));
+    let direction = { x: 0, y: 0, angle: 0 };
+    if (arrowVectors.length) {
+      for (const a of arrowVectors) { direction.x += a.x; direction.y += a.y; }
       const m = Math.hypot(direction.x, direction.y) || 1;
       direction.x /= m; direction.y /= m;
+      direction.angle = Math.atan2(direction.y, direction.x);
       notes.push(`Направляющая стрелка задаёт направление потока.`);
     }
 
@@ -202,6 +209,8 @@ export class SpellCompiler {
       element,
       shape,
       direction,
+      vector: direction,
+      arrows: arrowVectors,
       power,
       stability,
       duration,
