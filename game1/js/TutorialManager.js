@@ -3,7 +3,11 @@
  * Пошаговое обучение: круг → элементальный знак → стрелка → полное заклинание.
  * Следит за анализом схемы и продвигает игрока по шагам.
  */
-import { GlyphTypes } from './GlyphDetector.js';
+const GlyphTypes = {
+  CIRCLE: 'circle',
+  WAVE: 'wave',
+  ARROW: 'arrow'
+};
 
 export class TutorialManager {
   constructor() {
