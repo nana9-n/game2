@@ -561,7 +561,7 @@ button.primary,
 }
 
 .panel {
-  outline: 1px solid rgba(255, 244, 206, 0.62);
+  outline: 3px solid rgba(163, 150, 176, 0.46);
   outline-offset: -12px;
 }
 
