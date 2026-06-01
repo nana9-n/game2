@@ -3,14 +3,14 @@
  * Связывает всё вместе: рисование → распознавание → компиляция → эффект → UI.
  * Управляет режимами, панелью анализа, книгой, испытаниями, обучением.
  */
-import { StrokeRecorder } from './StrokeRecorder.js';
-import { SpellCompiler } from './SpellCompiler.js';
-import { EffectEngine } from './EffectEngine.js';
-import { Spellbook } from './Spellbook.js';
-import { TutorialManager } from './TutorialManager.js';
-import { NeuralDetector } from './NeuralDetector.js';
-import { TrainingUI } from './TrainingUI.js';
-import { LevelManager } from './LevelManager.js';
+import { StrokeRecorder } from './StrokeRecorder.js?v=20260601a';
+import { SpellCompiler } from './SpellCompiler.js?v=20260601a';
+import { EffectEngine } from './EffectEngine.js?v=20260601a';
+import { Spellbook } from './Spellbook.js?v=20260601a';
+import { TutorialManager } from './TutorialManager.js?v=20260601a';
+import { NeuralDetector } from './NeuralDetector.js?v=20260601a';
+import { TrainingUI } from './TrainingUI.js?v=20260601a';
+import { LevelManager } from './LevelManager.js?v=20260601a';
 
 export class UIController {
   constructor() {
@@ -543,7 +543,10 @@ export class UIController {
       light: 'Свет', plant: 'Растение', bloom: 'Цветущие лозы',
       prism: 'Призматический луч', barrier: 'Барьер',
       mist: 'Туман/Пар', firestorm: 'Огненный вихрь', lightdome: 'Световой купол',
-      mud: 'Грязь/Рост', lava: 'Магма', storm: 'Шторм', unknown: 'Неизвестно'
+      mud: 'Грязь/Рост', lava: 'Магма', storm: 'Шторм',
+      jungle: 'Буйные джунгли', volcano: 'Извержение', ice: 'Лёд', solar: 'Солнечный взрыв',
+      aurora: 'Полярное сияние', sandstorm: 'Песчаная буря', ash: 'Пожар и пепел', thorns: 'Терновый щит',
+      unknown: 'Неизвестно'
     }[e] || e;
   }
 

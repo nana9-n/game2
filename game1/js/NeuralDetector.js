@@ -3,7 +3,7 @@
  * Нейросетевой распознаватель глифов на TensorFlow.js. Распознаёт
  * отдельные штрихи схемы и хранит модель/примеры прямо в браузере.
  */
-import { ImageProcessor } from './ImageProcessor.js';
+import { ImageProcessor } from './ImageProcessor.js?v=20260601a';
 
 const MODEL_URL = 'indexeddb://witch-glyph-stroke-model-v2';
 const DATASET_KEY = 'witch-glyph-stroke-dataset-v2';
