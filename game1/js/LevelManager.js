@@ -2,7 +2,7 @@
  * LevelManager
  * Хранит карту уровней, создаёт интерактивные объекты и сохраняет прогресс.
  */
-import { createGameObject } from './GameObject.js?v=20260601a';
+import { createGameObject } from './GameObject.js?v=20260602a';
 
 const STORAGE_KEY = 'witch-hat-atelier-level-progress-v1';
 

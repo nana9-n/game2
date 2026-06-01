@@ -2,7 +2,7 @@
  * main.js
  * Точка входа. Инициализирует UIController после загрузки DOM.
  */
-import { UIController } from './UIController.js?v=20260601a';
+import { UIController } from './UIController.js?v=20260602a';
 
 window.addEventListener('DOMContentLoaded', () => {
   const app = new UIController();

@@ -3,14 +3,14 @@
  * Связывает всё вместе: рисование → распознавание → компиляция → эффект → UI.
  * Управляет режимами, панелью анализа, книгой, испытаниями, обучением.
  */
-import { StrokeRecorder } from './StrokeRecorder.js?v=20260601a';
-import { SpellCompiler } from './SpellCompiler.js?v=20260601a';
-import { EffectEngine } from './EffectEngine.js?v=20260601a';
-import { Spellbook } from './Spellbook.js?v=20260601a';
-import { TutorialManager } from './TutorialManager.js?v=20260601a';
-import { NeuralDetector } from './NeuralDetector.js?v=20260601a';
-import { TrainingUI } from './TrainingUI.js?v=20260601a';
-import { LevelManager } from './LevelManager.js?v=20260601a';
+import { StrokeRecorder } from './StrokeRecorder.js?v=20260602a';
+import { SpellCompiler } from './SpellCompiler.js?v=20260602a';
+import { EffectEngine } from './EffectEngine.js?v=20260602a';
+import { Spellbook } from './Spellbook.js?v=20260602a';
+import { TutorialManager } from './TutorialManager.js?v=20260602a';
+import { NeuralDetector } from './NeuralDetector.js?v=20260602a';
+import { TrainingUI } from './TrainingUI.js?v=20260602a';
+import { LevelManager } from './LevelManager.js?v=20260602a';
 
 export class UIController {
   constructor() {
@@ -246,8 +246,14 @@ export class UIController {
   // ---------- События рисования ----------
 
   _onDraw() {
-    // Живой анализ: только нейросеть, без эвристического распознавания.
-    this._analyze(true);
+    // Во время рисования полное распознавание не запускаем — оно тяжёлое
+    // (кластеризация штрихов + инференс по каждой кляксе). Распознавание
+    // всего холста выполняется по завершении штриха / замыкании круга
+    // в _onStrokeEnd. Здесь только лёгкая подсказка-состояние.
+    const liveEl = document.getElementById('analysisLive');
+    if (liveEl && this.recorder.strokes.length) {
+      liveEl.innerHTML = '<p class="muted">✍️ Рисуем… Замкни круг — и схема распознается целиком.</p>';
+    }
   }
 
   async _onStrokeEnd() {

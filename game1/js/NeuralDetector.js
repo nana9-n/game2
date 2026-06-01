@@ -3,14 +3,19 @@
  * Нейросетевой распознаватель глифов на TensorFlow.js. Распознаёт
  * отдельные штрихи схемы и хранит модель/примеры прямо в браузере.
  */
-import { ImageProcessor } from './ImageProcessor.js?v=20260601a';
+import { ImageProcessor } from './ImageProcessor.js?v=20260602a';
 
-const MODEL_URL = 'indexeddb://witch-glyph-stroke-model-v2';
-const DATASET_KEY = 'witch-glyph-stroke-dataset-v2';
+// v3 — распознавание по «кляксам» (связным группам штрихов), изображение 64×64.
+// Хранилище отделено от v2 (28×28): старая модель/датасет несовместимы по размеру.
+const MODEL_URL = 'indexeddb://witch-glyph-canvas-model-v3';
+const DATASET_KEY = 'witch-glyph-canvas-dataset-v3';
 
 export class NeuralDetector {
   constructor() {
     this.processor = new ImageProcessor();
+    this.size = this.processor.size;        // сторона нормализованного изображения (64)
+    this.area = this.size * this.size;      // длина вектора одного примера (4096)
+    this.clusterGap = 16;                   // макс. зазор (px, в координатах холста), при котором штрихи считаются одной кляксой
     this.model = null;
     this.ready = false;
     this.dataset = [];
@@ -32,13 +37,16 @@ export class NeuralDetector {
   buildModel() {
     this._ensureTf();
     const model = tf.sequential();
-    model.add(tf.layers.conv2d({ filters: 16, kernelSize: 3, activation: 'relu', padding: 'same', inputShape: [28, 28, 1] }));
+    // Вход 64×64×1 → три блока conv+pool (64→32→16→8), затем плотные слои.
+    model.add(tf.layers.conv2d({ filters: 16, kernelSize: 3, activation: 'relu', padding: 'same', inputShape: [this.size, this.size, 1] }));
     model.add(tf.layers.maxPooling2d({ poolSize: 2 }));
     model.add(tf.layers.conv2d({ filters: 32, kernelSize: 3, activation: 'relu', padding: 'same' }));
     model.add(tf.layers.maxPooling2d({ poolSize: 2 }));
+    model.add(tf.layers.conv2d({ filters: 48, kernelSize: 3, activation: 'relu', padding: 'same' }));
+    model.add(tf.layers.maxPooling2d({ poolSize: 2 }));
     model.add(tf.layers.flatten());
-    model.add(tf.layers.dropout({ rate: 0.25 }));
-    model.add(tf.layers.dense({ units: 64, activation: 'relu' }));
+    model.add(tf.layers.dropout({ rate: 0.3 }));
+    model.add(tf.layers.dense({ units: 96, activation: 'relu' }));
     model.add(tf.layers.dense({ units: this.labels.length, activation: 'softmax' }));
     this._compile(model);
     this.model = model;
@@ -81,18 +89,18 @@ export class NeuralDetector {
 
     const shuffled = this._shuffle([...this.dataset]);
     const n = shuffled.length;
-    const flat = new Float32Array(n * 28 * 28);
+    const flat = new Float32Array(n * this.area);
     const labelIds = new Int32Array(n);
 
     shuffled.forEach((item, index) => {
-      flat.set(item.data, index * 28 * 28);
+      flat.set(item.data, index * this.area);
       labelIds[index] = item.label;
     });
 
     if (this.model) this.model.dispose();
     this.buildModel();
 
-    const xs = tf.tensor4d(flat, [n, 28, 28, 1]);
+    const xs = tf.tensor4d(flat, [n, this.size, this.size, 1]);
     const labelTensor = tf.tensor1d(labelIds, 'int32');
     const ys = tf.oneHot(labelTensor, this.labels.length);
 
@@ -134,45 +142,79 @@ export class NeuralDetector {
     return this._formatPrediction(probs);
   }
 
-  async predictStrokes(strokes, sourceSize = 520) {
-    if (!this.ready || !this.model) return [];
-    const results = [];
-    for (const stroke of strokes) {
-      const { tensor, empty } = this.processor.processStroke(stroke.points || [], sourceSize);
-      if (empty) {
-        tensor.dispose();
-        results.push(null);
-        continue;
+  /**
+   * Группирует штрихи в «кляксы»: штрихи, чьи линии соприкасаются или почти
+   * соприкасаются (зазор ≤ clusterGap), относятся к одному глифу. Так квадрат
+   * из 4 отдельных линий собирается в одну группу и распознаётся как квадрат.
+   */
+  clusterStrokes(strokes, gap = this.clusterGap) {
+    const n = strokes.length;
+    const parent = Array.from({ length: n }, (_, i) => i);
+    const find = a => { while (parent[a] !== a) { parent[a] = parent[parent[a]]; a = parent[a]; } return a; };
+    const union = (a, b) => { parent[find(a)] = find(b); };
+
+    const bboxes = strokes.map(s => this._strokeBBox(s));
+    for (let i = 0; i < n; i++) {
+      for (let j = i + 1; j < n; j++) {
+        if (find(i) === find(j)) continue;
+        if (!this._bboxNear(bboxes[i], bboxes[j], gap)) continue;
+        if (this._strokesClose(strokes[i], strokes[j], gap)) union(i, j);
       }
-      const prediction = this.model.predict(tensor);
-      const probs = Array.from(await prediction.data());
-      tensor.dispose();
-      prediction.dispose();
-      results.push(this._formatPrediction(probs));
-      await tf.nextFrame();
     }
-    return results;
+
+    const groups = new Map();
+    for (let i = 0; i < n; i++) {
+      const root = find(i);
+      if (!groups.has(root)) groups.set(root, []);
+      groups.get(root).push(strokes[i]);
+    }
+    return [...groups.values()];
   }
 
+  _bboxNear(a, b, gap) {
+    return a.minX - gap <= b.maxX && a.maxX + gap >= b.minX &&
+           a.minY - gap <= b.maxY && a.maxY + gap >= b.minY;
+  }
 
+  _strokesClose(a, b, gap) {
+    const pa = a.points || [], pb = b.points || [];
+    if (!pa.length || !pb.length) return false;
+    const g2 = gap * gap;
+    const stepA = Math.max(1, Math.floor(pa.length / 48));
+    const stepB = Math.max(1, Math.floor(pb.length / 48));
+    for (let i = 0; i < pa.length; i += stepA) {
+      for (let j = 0; j < pb.length; j += stepB) {
+        const dx = pa[i].x - pb[j].x;
+        const dy = pa[i].y - pb[j].y;
+        if (dx * dx + dy * dy <= g2) return true;
+      }
+    }
+    return false;
+  }
 
   /**
-   * Собирает отчёт для SpellCompiler только по нейросетевым предсказаниям.
-   * Каждый штрих распознаётся отдельно: круг активации не смешивается с волной,
-   * стрелками и другими знаками внутри схемы.
+   * Главный вход распознавания. Берёт ВЕСЬ набор штрихов холста, группирует их
+   * в кляксы, нормализует каждую в изображение 64×64 и подаёт в сеть. Возвращает
+   * один или несколько найденных глифов с их позициями/направлением — поэтому
+   * круг активации, стрелки, площадь, счётчики и комбинации продолжают работать.
    */
   async analyzeStrokes(strokes, canvasSize = 520) {
     if (!this.ready || !this.model || !strokes.length) return null;
 
-    const predictions = await this.predictStrokes(strokes, canvasSize);
+    const clusters = this.clusterStrokes(strokes);
     const glyphs = [];
 
-    for (let i = 0; i < strokes.length; i++) {
-      const prediction = predictions[i];
-      if (!prediction) continue;
+    for (const cluster of clusters) {
+      const { tensor, empty } = this.processor.processStrokeGroup(cluster, canvasSize);
+      if (empty) { tensor.dispose(); continue; }
 
-      const glyph = this._glyphFromPrediction(strokes[i], prediction);
-      glyphs.push(glyph);
+      const prediction = this.model.predict(tensor);
+      const probs = Array.from(await prediction.data());
+      tensor.dispose();
+      prediction.dispose();
+
+      glyphs.push(this._glyphFromCluster(cluster, this._formatPrediction(probs)));
+      await tf.nextFrame();
     }
 
     const circles = glyphs.filter(g => g.type === 'circle');
@@ -244,7 +286,7 @@ export class NeuralDetector {
       if (!raw) return false;
       const parsed = JSON.parse(raw);
       this.dataset = parsed
-        .filter(item => Number.isInteger(item.label) && Array.isArray(item.data) && item.data.length === 28 * 28)
+        .filter(item => Number.isInteger(item.label) && Array.isArray(item.data) && item.data.length === this.area)
         .map(item => ({ label: item.label, data: new Float32Array(item.data) }));
       return true;
     } catch (error) {
@@ -264,14 +306,30 @@ export class NeuralDetector {
     }
   }
 
-  _glyphFromPrediction(stroke, prediction) {
+  /**
+   * Строит глиф из кляксы (группы штрихов): объединённый bbox/центр/радиус,
+   * направление по самому длинному штриху (для стрелок), зазор замыкания.
+   */
+  _glyphFromCluster(cluster, prediction) {
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    let longest = cluster[0];
+    let longestLen = -1;
+
+    for (const s of cluster) {
+      const bb = this._strokeBBox(s);
+      if (bb.minX < minX) minX = bb.minX;
+      if (bb.minY < minY) minY = bb.minY;
+      if (bb.maxX > maxX) maxX = bb.maxX;
+      if (bb.maxY > maxY) maxY = bb.maxY;
+      const len = s.length || (s.points ? s.points.length : 0);
+      if (len > longestLen) { longestLen = len; longest = s; }
+    }
+
+    const bbox = { minX, minY, maxX, maxY };
+    const center = { x: (minX + maxX) / 2, y: (minY + maxY) / 2 };
     const type = prediction.confidence >= 0.35 ? prediction.type : 'unknown';
-    const bbox = this._strokeBBox(stroke);
-    const center = {
-      x: (bbox.minX + bbox.maxX) / 2,
-      y: (bbox.minY + bbox.maxY) / 2
-    };
-    const points = stroke.points || [];
+
+    const points = longest.points || [];
     const first = points[0] || center;
     const last = points[points.length - 1] || center;
     const dir = { x: last.x - first.x, y: last.y - first.y };
@@ -282,11 +340,12 @@ export class NeuralDetector {
     return {
       type,
       name: type === 'unknown' ? 'знак?' : prediction.name,
-      stroke,
+      stroke: longest,
+      strokes: cluster,
       center,
       bbox,
       score: prediction.confidence,
-      radius: Math.max(bbox.maxX - bbox.minX, bbox.maxY - bbox.minY) / 2,
+      radius: Math.max(maxX - minX, maxY - minY) / 2,
       dir,
       closureGap: Math.hypot(last.x - first.x, last.y - first.y),
       all: prediction.all

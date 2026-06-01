@@ -52,7 +52,7 @@ export class TrainingUI {
       <div class="modal-content" style="border-color:var(--accent);box-shadow:0 0 42px rgba(138,90,43,.28), var(--shadow)">
         <button class="modal-close" data-close title="Закрыть">✕</button>
         <h2>🧠 Обучение нейросети</h2>
-        <p class="muted">Нарисуй на холсте один знак без круга активации (например одну волну для воды или одну стрелку), затем выбери его тип внизу — пример сразу попадёт в базу, без подтверждения.</p>
+        <p class="muted">Нарисуй на холсте один знак без круга активации (можно несколькими штрихами — например квадрат из 4 линий: он попадёт в сеть как цельное изображение). Затем выбери его тип внизу — пример сразу уйдёт в базу, без подтверждения.</p>
 
         <div style="display:flex;flex-wrap:wrap;gap:8px;margin:16px 0 14px">
           <button id="trainStart" class="primary">⚡ Обучить модель</button>

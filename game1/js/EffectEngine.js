@@ -4,7 +4,7 @@
  * несколько активных кастов, направленные потоки, комбо-реакции и частицы
  * с физикой через ParticleSystem.
  */
-import { ParticleSystem } from './Particle.js?v=20260601a';
+import { ParticleSystem } from './Particle.js?v=20260602a';
 
 const PALETTES = {
   water: ['#4fd8ff', '#86efff', '#1a7fca', '#d7fbff'],
