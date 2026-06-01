@@ -103,9 +103,9 @@ export class GameObject {
   }
 
   _spellGain(spell, req) {
-    const stability = Math.max(35, spell.stability || 50) / 100;
-    const power = Math.max(35, spell.power || 50) / 100;
-    return Math.max(34, Math.round(req.amount * (0.46 + power * 0.36 + stability * 0.2)));
+    // Одно правильно нарисованное и активированное заклинание полностью
+    // выполняет шаг требования — уровень засчитывается с первой верной попытки.
+    return req.amount;
   }
 
   _afterRequirementProgress(req, spell) {}
@@ -127,26 +127,61 @@ export class GameObject {
   }
 
   _accent() {
-    if (this.completed) return '#9ee6b8';
-    if (this.hitFlash > 0) return '#8fb7ff';
-    if (this.wrongFlash > 0) return '#ff9e9e';
-    return '#8a92a6';
+    if (this.completed) return '#a6e6a0';
+    if (this.hitFlash > 0) return '#ffd27a';
+    if (this.wrongFlash > 0) return '#e8896a';
+    return '#c9a36a';
   }
 
   _drawBase(ctx, accent) {
     ctx.save();
     ctx.translate(this.x, this.y);
-    ctx.globalAlpha = 0.22 + this.hitFlash * 0.25;
-    ctx.fillStyle = accent;
+
+    // Тень-подставка на земле
+    ctx.globalAlpha = 0.3;
+    ctx.fillStyle = 'rgba(18, 11, 5, 0.9)';
     ctx.beginPath();
-    ctx.arc(0, 0, this.radius * (0.9 + Math.sin(this.pulse * 3) * 0.02), 0, Math.PI * 2);
+    ctx.ellipse(0, this.radius * 0.82, this.radius * 0.88, this.radius * 0.24, 0, 0, Math.PI * 2);
     ctx.fill();
+
+    // Мягкий тёплый ореол
+    const glow = this.completed ? 0.5 : 0.26 + this.hitFlash * 0.42;
+    const r = this.radius * (0.95 + Math.sin(this.pulse * 3) * 0.02);
+    const grad = ctx.createRadialGradient(0, 0, r * 0.2, 0, 0, r * 1.28);
+    grad.addColorStop(0, this._rgba(accent, glow));
+    grad.addColorStop(1, this._rgba(accent, 0));
     ctx.globalAlpha = 1;
-    ctx.fillStyle = '#d7dce8';
-    ctx.font = '600 13px system-ui, sans-serif';
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(0, 0, r * 1.28, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Контурное кольцо-подиум
+    ctx.globalAlpha = 0.45 + this.hitFlash * 0.4;
+    ctx.strokeStyle = accent;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(0, 0, r, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // Подпись с обводкой — читается на тёмной сцене
+    ctx.globalAlpha = 1;
+    ctx.font = '600 13px Georgia, serif';
     ctx.textAlign = 'center';
-    ctx.fillText(this.label, 0, this.radius + 20);
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = 'rgba(26, 16, 8, 0.85)';
+    ctx.fillStyle = '#f3e6c8';
+    ctx.strokeText(this.label, 0, this.radius + 22);
+    ctx.fillText(this.label, 0, this.radius + 22);
     ctx.restore();
+  }
+
+  _rgba(hex, a) {
+    if (!hex || hex[0] !== '#') return hex;
+    const h = hex.slice(1);
+    const f = h.length === 3 ? h.split('').map(c => c + c).join('') : h;
+    const n = Number.parseInt(f, 16);
+    return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
   }
 }
 
@@ -388,6 +423,57 @@ export class AncientTreeObject extends SeedObject {
   }
 }
 
+export class FogObject extends GameObject {
+  constructor(config = {}) {
+    super({ type: 'fog', label: 'Туман', state: 'thick', completeState: 'clear', radius: 58,
+      requirements: [{ id: 'wind', label: 'Ветер: развеять', elements: ['wind', 'storm', 'firestorm'], state: 'clearing', amount: 100, completeMessage: 'туман рассеялся' }], ...config });
+  }
+
+  draw(ctx, dt) {
+    super.draw(ctx, dt);
+    ctx.save(); ctx.translate(this.x, this.y);
+    const dens = this.completed ? 0.12 : 0.6 - this.hitFlash * 0.25;
+    ctx.globalAlpha = Math.max(0.08, dens);
+    ctx.fillStyle = '#e3e9ec';
+    for (let i = 0; i < 5; i++) {
+      const a = this.pulse * 0.5 + i * 1.3;
+      const px = Math.cos(a) * 20 + (i - 2) * 15;
+      const py = Math.sin(a * 0.8) * 9;
+      ctx.beginPath(); ctx.ellipse(px, py, 23, 13, 0, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.restore();
+  }
+}
+
+export class WaterWheelObject extends GameObject {
+  constructor(config = {}) {
+    super({ type: 'waterWheel', label: 'Мельница', state: 'still', completeState: 'spinning', radius: 50,
+      requirements: [{ id: 'flow', label: 'Вода: запустить', elements: ['water', 'storm', 'mist'], state: 'spinning', amount: 100, completeMessage: 'колесо завертелось' }], ...config });
+    this.spin = 0;
+  }
+
+  draw(ctx, dt) {
+    super.draw(ctx, dt);
+    if (this.completed) this.spin += dt * 3.2;
+    else if (this.hitFlash > 0) this.spin += dt * 1.1;
+    ctx.save(); ctx.translate(this.x, this.y);
+    ctx.rotate(this.spin);
+    ctx.strokeStyle = this.completed ? '#b58a4f' : '#9a7b4f';
+    ctx.lineWidth = 5; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.arc(0, 0, 34, 0, Math.PI * 2); ctx.stroke();
+    for (let i = 0; i < 8; i++) {
+      const a = i / 8 * Math.PI * 2;
+      ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(Math.cos(a) * 34, Math.sin(a) * 34); ctx.stroke();
+      ctx.save();
+      ctx.translate(Math.cos(a) * 34, Math.sin(a) * 34); ctx.rotate(a);
+      ctx.fillStyle = '#7c5a3a';
+      ctx.fillRect(-6, -3, 12, 11);
+      ctx.restore();
+    }
+    ctx.restore();
+  }
+}
+
 export function createGameObject(config) {
   const map = {
     seed: SeedObject,
@@ -398,6 +484,8 @@ export function createGameObject(config) {
     bridge: StoneBridgeObject,
     firePatch: FirePatchObject,
     stone: WindStoneObject,
+    fog: FogObject,
+    waterWheel: WaterWheelObject,
     ancientTree: AncientTreeObject
   };
   const Ctor = map[config.type] || GameObject;

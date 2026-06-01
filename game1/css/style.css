@@ -607,6 +607,26 @@ button.primary,
   color: #fdf3da;
 }
 
+/* ====== HINT MODAL ====== */
+#hintContent { margin-top: 12px; }
+.hint-goal {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 10px;
+}
+.hint-text { color: var(--text-dim); line-height: 1.5; }
+.hint-steps {
+  margin: 12px 0 0;
+  padding: 12px 12px 12px 30px;
+  border: 1px solid var(--line-soft);
+  border-radius: 12px;
+  background: rgba(120, 86, 40, .08);
+  color: var(--text-dim);
+  display: grid;
+  gap: 6px;
+}
+
 @media (max-width: 1060px) {
   .topbar { align-items: flex-start; flex-direction: column; }
   .mode-switch { justify-content: flex-start; }
