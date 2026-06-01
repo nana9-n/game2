@@ -78,6 +78,8 @@ export class UIController {
 
   _bindUI() {
     document.getElementById('btnUndo').onclick = () => this._undoStroke();
+    document.getElementById('btnRedo').onclick = () => this._redoStroke();
+    document.getElementById('btnCircle').onclick = () => this._drawCircle();
     document.getElementById('btnClear').onclick = () => this._clearDrawing();
     document.getElementById('btnCast').onclick = () => this._castSpell();
 
@@ -188,6 +190,23 @@ export class UIController {
     this._drawActivationGuide();
   }
 
+  /**
+   * Рисует ровный замкнутый круг активации по направляющей и анализирует схему.
+   */
+  _drawCircle() {
+    const cx = this.drawCanvas.width / 2;
+    const cy = this.drawCanvas.height / 2;
+    const r = 180; // совпадает с полупрозрачной направляющей
+    const steps = 72;
+    const points = [];
+    for (let i = 0; i <= steps; i++) {
+      const a = (i / steps) * Math.PI * 2 - Math.PI / 2;
+      points.push({ x: cx + Math.cos(a) * r, y: cy + Math.sin(a) * r });
+    }
+    this.recorder.addStrokeFromPoints(points);
+    this._onStrokeEnd();
+  }
+
   _switchMode(mode) {
     if (mode === 'book') {
       this._openBook();
@@ -222,7 +241,7 @@ export class UIController {
     const ctx = this.overlayCtx;
     ctx.clearRect(0, 0, this.overlay.width, this.overlay.height);
     ctx.save();
-    ctx.strokeStyle = 'rgba(123,108,255,0.18)';
+    ctx.strokeStyle = 'rgba(120,86,40,0.28)';
     ctx.lineWidth = 1;
     ctx.setLineDash([6, 8]);
     ctx.beginPath();

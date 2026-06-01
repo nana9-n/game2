@@ -31,7 +31,7 @@ export class TrainingUI {
       const state = count >= 8 ? '✓' : (count > 0 ? '◐' : '○');
       const color = count >= 8 ? 'var(--plant)' : (count > 0 ? 'var(--light)' : 'var(--text-dim)');
       return `
-        <div style="display:flex;justify-content:space-between;gap:12px;padding:4px 0;border-bottom:1px dashed rgba(255,255,255,.08)">
+        <div style="display:flex;justify-content:space-between;gap:12px;padding:4px 0;border-bottom:1px dashed rgba(91,62,30,.20)">
           <span style="color:${color}">${state} ${this.neural.labelNames[label]}</span>
           <strong>${count}</strong>
         </div>`;
@@ -49,59 +49,61 @@ export class TrainingUI {
     this.modal.id = 'trainingModal';
     this.modal.className = 'modal hidden';
     this.modal.innerHTML = `
-      <div class="modal-content" style="border-color:var(--accent);box-shadow:0 0 42px rgba(164,143,255,.3), var(--shadow)">
+      <div class="modal-content" style="border-color:var(--accent);box-shadow:0 0 42px rgba(138,90,43,.28), var(--shadow)">
         <button class="modal-close" data-close title="Закрыть">✕</button>
         <h2>🧠 Обучение нейросети</h2>
-        <p class="muted">Для обучения рисуй только один знак без круга активации: например одну волну для воды или одну стрелку. Круг, волну и стрелки ИИ потом распознаёт по отдельным штрихам в общей схеме.</p>
+        <p class="muted">Нарисуй на холсте один знак без круга активации (например одну волну для воды или одну стрелку), затем выбери его тип внизу — пример сразу попадёт в базу, без подтверждения.</p>
 
-        <div style="display:grid;grid-template-columns:minmax(180px,1fr) auto;gap:10px;align-items:end;margin:16px 0;padding:12px;background:var(--bg-3);border:1px solid var(--line);border-radius:12px">
-          <label style="display:flex;flex-direction:column;gap:6px;color:var(--text-dim)">
-            Тип глифа
-            <select id="trainLabel" style="background:var(--bg-2);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:9px;font-family:inherit"></select>
-          </label>
-          <button id="trainAdd" class="primary">➕ Добавить пример</button>
-        </div>
-
-        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px">
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin:16px 0 14px">
           <button id="trainStart" class="primary">⚡ Обучить модель</button>
           <button id="trainSave" style="background:var(--bg-3);color:var(--text);border:1px solid var(--line);padding:10px 14px;border-radius:8px;font-family:inherit;cursor:pointer">💾 Сохранить</button>
           <button id="trainDownload" style="background:var(--bg-3);color:var(--text);border:1px solid var(--line);padding:10px 14px;border-radius:8px;font-family:inherit;cursor:pointer">⬇ Скачать файлы</button>
-          <button id="trainClearData" style="background:rgba(255,58,106,.12);color:var(--risk-forbidden);border:1px solid var(--risk-forbidden);padding:10px 14px;border-radius:8px;font-family:inherit;cursor:pointer">🗑 Очистить</button>
+          <button id="trainClearData" style="background:rgba(166,52,42,.14);color:var(--risk-forbidden);border:1px solid var(--risk-forbidden);padding:10px 14px;border-radius:8px;font-family:inherit;cursor:pointer">🗑 Очистить</button>
         </div>
 
         <div id="trainProgress" style="margin:12px 0"></div>
         <div id="trainMsg" style="min-height:24px;margin:8px 0;color:var(--text-dim)"></div>
-        <div id="trainStats" style="background:rgba(0,0,0,.18);border:1px solid var(--line);border-radius:12px;padding:12px"></div>
+        <div id="trainStats" style="background:rgba(91,62,30,.10);border:1px solid var(--line);border-radius:12px;padding:12px"></div>
+
+        <div class="train-label-picker">
+          <span class="train-picker-title">Выбери знак — пример сразу уйдёт в базу:</span>
+          <div id="trainLabelButtons" class="train-label-buttons"></div>
+        </div>
       </div>`;
 
     document.body.appendChild(this.modal);
 
-    const select = this.modal.querySelector('#trainLabel');
-    select.innerHTML = this.neural.labels
-      .map(label => `<option value="${label}">${this.neural.labelNames[label]}</option>`)
+    const buttonWrap = this.modal.querySelector('#trainLabelButtons');
+    buttonWrap.innerHTML = this.neural.labels
+      .map(label => `<button class="train-label-btn" data-label="${label}">${this.neural.labelNames[label]}</button>`)
       .join('');
+    buttonWrap.querySelectorAll('[data-label]').forEach(btn => {
+      btn.onclick = () => this._quickAdd(btn.dataset.label);
+    });
 
     this.modal.querySelector('[data-close]').onclick = () => this.close();
     this.modal.addEventListener('click', event => {
       if (event.target === this.modal) this.close();
     });
-    this.modal.querySelector('#trainAdd').onclick = () => this._addExample();
     this.modal.querySelector('#trainStart').onclick = () => this._train();
     this.modal.querySelector('#trainSave').onclick = async () => this._save();
     this.modal.querySelector('#trainDownload').onclick = async () => this._download();
     this.modal.querySelector('#trainClearData').onclick = () => this._clearData();
   }
 
-  _addExample() {
+  /**
+   * Прямое добавление примера: пользователь выбрал тип знака внизу окна —
+   * текущий рисунок сразу отправляется в базу без подтверждения.
+   */
+  _quickAdd(label) {
     try {
-      const label = this.modal.querySelector('#trainLabel').value;
       const added = this.neural.addExample(this.drawCanvas, label);
       if (!added) {
-        this._msg('Сначала нарисуй глиф на холсте.', 'warn');
+        this._msg('Сначала нарисуй знак на холсте.', 'warn');
         return;
       }
       this.neural.saveDataset();
-      this._msg(`Пример «${this.neural.labelNames[label]}» добавлен.`, 'ok');
+      this._msg(`Пример «${this.neural.labelNames[label]}» добавлен в базу.`, 'ok');
       this.onClearCanvas();
       this.refresh();
     } catch (error) {

@@ -259,7 +259,36 @@ export class EffectEngine {
       drag: 0.92,
       turbulence: effect.chaos * 45
     });
+    if (effect.element === 'fire' || effect.element === 'firestorm' || effect.element === 'lava') {
+      this._fireExplosion(effect);
+    }
     if (label) this._addLabel(label, effect.origin, effect.palette[0]);
+  }
+
+  /**
+   * Зрелищный огненный взрыв: яркая вспышка, огненные облака, разлетающиеся
+   * искры и поднимающийся серый дым после взрыва.
+   */
+  _fireExplosion(e) {
+    const cx = e.origin.x, cy = e.origin.y;
+    this.flashes.push({ x: cx, y: cy, r: e.area * 0.7, life: 0.3, maxLife: 0.3, color: '#ffd24d' });
+    // Ядро взрыва — огненные облака, распространяются по площади
+    this.particles.emit({ count: Math.floor(20 + e.power * 30), x: cx, y: cy,
+      xJitter: e.area * 0.22, yJitter: e.area * 0.16, angle: 0, spread: Math.PI * 2,
+      speed: 80 + e.power * 160, speedJitter: 140, life: 0.85, lifeJitter: 0.5,
+      size: 10 + e.power * 14, sizeJitter: 10, color: this._pick(['#fff176', '#ffb13d', '#ff4b24']),
+      shape: 'circle', gravity: -40, drag: 0.9, turbulence: 70, glow: true, additive: true });
+    // Разлетающиеся искры
+    this.particles.emit({ count: Math.floor(24 + e.power * 36), x: cx, y: cy, angle: 0, spread: Math.PI * 2,
+      speed: 200 + e.power * 320, speedJitter: 220, life: 0.6, lifeJitter: 0.4,
+      size: 2 + e.power * 3, sizeJitter: 2, color: this._pick(['#fff7d6', '#ffd24d', '#ff7a24']),
+      shape: 'spark', gravity: 120, drag: 0.92, turbulence: 50, glow: true, additive: true });
+    // Серый дым после взрыва поднимается вверх
+    this.particles.emit({ count: Math.floor(10 + e.power * 14), x: cx, y: cy - 8,
+      xJitter: e.area * 0.3, yJitter: 14, angle: -Math.PI / 2, spread: 1.0,
+      speed: 30 + e.power * 50, speedJitter: 50, life: 1.9, lifeJitter: 1.2,
+      size: 16 + e.power * 18, sizeJitter: 14, color: this._pick(['#5c5c64', '#6f6f78', '#48484f']),
+      shape: 'smoke', gravity: -30, drag: 0.96, turbulence: 60, alpha: 0.42 });
   }
 
   _addLabel(text, origin, color = '#fff0a8') {
@@ -282,7 +311,7 @@ export class EffectEngine {
     const ctx = this.ctx;
     ctx.save();
     ctx.globalCompositeOperation = 'source-over';
-    ctx.fillStyle = 'rgba(19, 24, 22, 0.19)';
+    ctx.fillStyle = 'rgba(26, 19, 11, 0.19)';
     ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
     const grad = ctx.createLinearGradient(0, this.canvas.height * 0.55, 0, this.canvas.height);
@@ -342,23 +371,37 @@ export class EffectEngine {
   }
 
   _emitWater(e) {
-    const angle = e.shape === 'fountain' ? -Math.PI / 2 : e.dir.angle;
-    this.particles.emit({ count: 2, x: e.origin.x, y: e.origin.y, xJitter: 12, yJitter: 10,
-      angle, spread: 0.35 + e.chaos * 0.9, speed: 180 + e.power * 260, speedJitter: 150,
-      life: 0.75 + e.area / 420, lifeJitter: 0.45, size: 3 + e.power * 5, sizeJitter: 4,
-      color: this._pick(e.palette), shape: Math.random() < 0.22 ? 'line' : 'circle', gravity: 260,
-      drag: 0.985, turbulence: e.chaos * 55, glow: true });
+    // Спокойный волнистый поток: точки рождения распределены по площади,
+    // угол плавно колеблется как волна, скорость и гравитация мягкие.
+    const p = this._areaPoint(e, 1.1, 0.55);
+    const baseAngle = e.shape === 'fountain' ? -Math.PI / 2 : e.dir.angle;
+    const wave = Math.sin(e.age * 2.2 + p.x * 0.025) * 0.55;
+    this.particles.emit({ count: 2, x: p.x, y: p.y, xJitter: 16, yJitter: 14,
+      angle: baseAngle + wave, spread: 0.4 + e.chaos * 0.5, speed: 55 + e.power * 90, speedJitter: 45,
+      life: 1.1 + e.area / 360, lifeJitter: 0.5, size: 3 + e.power * 4, sizeJitter: 3,
+      color: this._pick(e.palette), shape: Math.random() < 0.3 ? 'line' : 'circle', gravity: 55,
+      drag: 0.99, turbulence: 18 + e.chaos * 24, glow: true });
   }
 
   _emitFire(e) {
-    this.particles.emit({ count: 2, x: e.origin.x, y: e.origin.y, xJitter: 18, yJitter: 12,
-      angle: e.shape === 'beam' ? e.dir.angle : -Math.PI / 2, spread: e.shape === 'beam' ? 0.4 + e.chaos : 1.2,
-      speed: 130 + e.power * 260, speedJitter: 180, life: 0.55 + e.power * 0.7, lifeJitter: 0.4,
-      size: 5 + e.power * 9, sizeJitter: 7, color: this._pick(e.palette.slice(0, 3)), shape: 'circle',
-      gravity: -80, drag: 0.94, turbulence: 60 + e.chaos * 150, glow: true, additive: false });
-    if (Math.random() < 0.32) this.particles.emit({ x: e.origin.x, y: e.origin.y, xJitter: 30, yJitter: 14,
-      angle: -Math.PI / 2, spread: 0.8, speed: 55, speedJitter: 80, life: 1.2, size: 9, sizeJitter: 8,
-      color: '#60606a', shape: 'smoke', gravity: -35, drag: 0.97, turbulence: 45, alpha: 0.45 });
+    const p = this._areaPoint(e, 0.95, 0.6);
+    // Клубящиеся огненные облака по всей площади
+    this.particles.emit({ count: 2, x: p.x, y: p.y, xJitter: 16, yJitter: 12,
+      angle: e.shape === 'beam' ? e.dir.angle : -Math.PI / 2, spread: e.shape === 'beam' ? 0.4 + e.chaos : 1.3,
+      speed: 50 + e.power * 130, speedJitter: 100, life: 0.7 + e.power * 0.8, lifeJitter: 0.5,
+      size: 8 + e.power * 12, sizeJitter: 9, color: this._pick(e.palette.slice(0, 3)),
+      shape: Math.random() < 0.45 ? 'smoke' : 'circle',
+      gravity: -60, drag: 0.95, turbulence: 50 + e.chaos * 130, glow: true, additive: false, alpha: 0.85 });
+    // Искры разлетаются
+    if (Math.random() < 0.6) this.particles.emit({ x: p.x, y: p.y, xJitter: 10, yJitter: 8,
+      angle: -Math.PI / 2, spread: 1.7, speed: 150 + e.power * 220, speedJitter: 160, life: 0.5, lifeJitter: 0.3,
+      size: 2 + e.power * 3, sizeJitter: 2, color: this._pick(['#fff176', '#ffd24d', '#ffb13d']),
+      shape: 'spark', gravity: 50, drag: 0.93, turbulence: 60, glow: true, additive: true });
+    // Серый дым поднимается
+    if (Math.random() < 0.35) this.particles.emit({ x: p.x, y: p.y - 10, xJitter: 26, yJitter: 14,
+      angle: -Math.PI / 2, spread: 0.7, speed: 32 + e.power * 42, speedJitter: 50, life: 1.6, lifeJitter: 1.0,
+      size: 12 + e.power * 14, sizeJitter: 12, color: this._pick(['#6a6a72', '#7d7d86', '#55555c']),
+      shape: 'smoke', gravity: -28, drag: 0.97, turbulence: 50, alpha: 0.42 });
   }
 
   _emitWind(e) {
@@ -371,24 +414,43 @@ export class EffectEngine {
   }
 
   _emitEarth(e) {
-    this.particles.emit({ x: e.origin.x, y: e.origin.y + 18, xJitter: e.area * 0.4, yJitter: 8,
-      angle: -Math.PI / 2, spread: 1.1 + e.chaos, speed: 100 + e.power * 180, speedJitter: 130,
-      life: 0.9, lifeJitter: 0.55, size: 4 + e.power * 8, sizeJitter: 7, color: this._pick(e.palette),
-      shape: Math.random() < 0.55 ? 'shard' : 'smoke', gravity: 360, drag: 0.965, turbulence: e.chaos * 40 });
+    // Рассыпчатые камни и куски земли. Если есть стрелки — летят по их направлению,
+    // иначе выбрасываются вверх. Доминируют осколки (shard) для «каменного» вида.
+    const hasArrow = e.arrows && e.arrows.length > 0;
+    const angle = hasArrow ? e.dir.angle : -Math.PI / 2;
+    const p = this._areaPoint(e, 0.75, 0.35);
+    this.particles.emit({ count: 2, x: p.x, y: p.y + 12, xJitter: e.area * 0.3, yJitter: 10,
+      angle, spread: hasArrow ? 0.55 + e.chaos * 0.5 : 1.2 + e.chaos,
+      speed: 90 + e.power * 170, speedJitter: 130, life: 1.0, lifeJitter: 0.55,
+      size: 4 + e.power * 9, sizeJitter: 8, color: this._pick(e.palette),
+      shape: Math.random() < 0.8 ? 'shard' : 'circle', gravity: 380, drag: 0.97,
+      turbulence: e.chaos * 30, rotationSpeed: (Math.random() - 0.5) * 11 });
+    // Пыль/мелкая крошка
+    if (Math.random() < 0.4) this.particles.emit({ x: p.x, y: p.y + 8, xJitter: e.area * 0.35, yJitter: 8,
+      angle, spread: hasArrow ? 0.9 : 1.5, speed: 40 + e.power * 60, speedJitter: 50,
+      life: 0.9, lifeJitter: 0.5, size: 5 + e.power * 6, sizeJitter: 5,
+      color: this._pick(['#caa06b', '#9c7a4e', '#b9966a']), shape: 'smoke', gravity: 70,
+      drag: 0.95, turbulence: 25, alpha: 0.4 });
   }
 
   _emitLight(e) {
-    this.particles.emit({ count: 2, x: e.origin.x, y: e.origin.y, xJitter: e.area * 0.2, yJitter: e.area * 0.2,
+    const p = this._areaPoint(e, 0.55, 0.55);
+    this.particles.emit({ count: 2, x: p.x, y: p.y, xJitter: e.area * 0.18, yJitter: e.area * 0.18,
       angle: Math.random() * Math.PI * 2, spread: Math.PI * 2, speed: 45 + e.power * 160, speedJitter: 110,
       life: 0.7 + e.power, lifeJitter: 0.5, size: 3 + e.power * 8, sizeJitter: 6, color: this._pick(e.palette),
       shape: Math.random() < 0.28 ? 'rune' : 'spark', drag: 0.98, turbulence: e.chaos * 35, glow: true, additive: false });
   }
 
   _emitPlant(e) {
-    this.particles.emit({ x: e.origin.x, y: e.origin.y, xJitter: e.area * 0.18, yJitter: 8,
-      angle: e.dir.angle || -Math.PI / 2, spread: 0.8, speed: 55 + e.power * 110, speedJitter: 80,
-      life: 1.2, lifeJitter: 0.8, size: 4 + e.power * 5, sizeJitter: 4, color: this._pick(e.palette),
-      shape: e.element === 'bloom' && Math.random() < 0.35 ? 'flower' : 'leaf', gravity: -45, drag: 0.975, turbulence: 60, glow: false });
+    // Споры и листья медленно рассеиваются по площади и постепенно вырастают
+    // (endSize > size), а не выплёскиваются струёй: малая скорость, долгая жизнь.
+    const p = this._areaPoint(e, 0.7, 0.5);
+    this.particles.emit({ x: p.x, y: p.y, xJitter: 14, yJitter: 14,
+      angle: -Math.PI / 2, spread: Math.PI * 0.85, speed: 12 + e.power * 26, speedJitter: 22,
+      life: 1.9, lifeJitter: 1.0, size: 2 + e.power * 2, endSize: 6 + e.power * 6, sizeJitter: 2,
+      color: this._pick(e.palette),
+      shape: e.element === 'bloom' && Math.random() < 0.35 ? 'flower' : 'leaf',
+      gravity: -12, drag: 0.97, turbulence: 16, glow: false });
   }
 
   _emitPrism(e) {
@@ -723,6 +785,20 @@ export class EffectEngine {
 
   _pick(palette) {
     return palette[Math.floor(Math.random() * palette.length)];
+  }
+
+  /**
+   * Случайная точка внутри эллиптической области эффекта вокруг origin.
+   * Позволяет частицам рождаться по всей площади сцены, а не в одной точке.
+   * spreadX/spreadY — доля area по горизонтали/вертикали.
+   */
+  _areaPoint(e, spreadX = 0.9, spreadY = 0.5) {
+    const a = Math.random() * Math.PI * 2;
+    const r = Math.sqrt(Math.random());
+    return {
+      x: e.origin.x + Math.cos(a) * r * e.area * spreadX,
+      y: e.origin.y + Math.sin(a) * r * e.area * spreadY
+    };
   }
 
   clearAll() {
