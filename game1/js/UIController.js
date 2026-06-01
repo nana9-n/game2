@@ -3,14 +3,14 @@
  * Связывает всё вместе: рисование → распознавание → компиляция → эффект → UI.
  * Управляет режимами, панелью анализа, книгой, испытаниями, обучением.
  */
-import { StrokeRecorder } from './StrokeRecorder.js';
-import { SpellCompiler } from './SpellCompiler.js';
-import { EffectEngine } from './EffectEngine.js';
-import { Spellbook } from './Spellbook.js';
-import { TutorialManager } from './TutorialManager.js';
-import { NeuralDetector } from './NeuralDetector.js';
-import { TrainingUI } from './TrainingUI.js';
-import { LevelManager } from './LevelManager.js';
+import { StrokeRecorder } from './StrokeRecorder.js?v=20260602a';
+import { SpellCompiler } from './SpellCompiler.js?v=20260602a';
+import { EffectEngine } from './EffectEngine.js?v=20260602a';
+import { Spellbook } from './Spellbook.js?v=20260602a';
+import { TutorialManager } from './TutorialManager.js?v=20260602a';
+import { NeuralDetector } from './NeuralDetector.js?v=20260602a';
+import { TrainingUI } from './TrainingUI.js?v=20260602a';
+import { LevelManager } from './LevelManager.js?v=20260602a';
 
 export class UIController {
   constructor() {
@@ -246,8 +246,14 @@ export class UIController {
   // ---------- События рисования ----------
 
   _onDraw() {
-    // Живой анализ: только нейросеть, без эвристического распознавания.
-    this._analyze(true);
+    // Во время рисования полное распознавание не запускаем — оно тяжёлое
+    // (кластеризация штрихов + инференс по каждой кляксе). Распознавание
+    // всего холста выполняется по завершении штриха / замыкании круга
+    // в _onStrokeEnd. Здесь только лёгкая подсказка-состояние.
+    const liveEl = document.getElementById('analysisLive');
+    if (liveEl && this.recorder.strokes.length) {
+      liveEl.innerHTML = '<p class="muted">✍️ Рисуем… Замкни круг — и схема распознается целиком.</p>';
+    }
   }
 
   async _onStrokeEnd() {
@@ -543,7 +549,10 @@ export class UIController {
       light: 'Свет', plant: 'Растение', bloom: 'Цветущие лозы',
       prism: 'Призматический луч', barrier: 'Барьер',
       mist: 'Туман/Пар', firestorm: 'Огненный вихрь', lightdome: 'Световой купол',
-      mud: 'Грязь/Рост', lava: 'Магма', storm: 'Шторм', unknown: 'Неизвестно'
+      mud: 'Грязь/Рост', lava: 'Магма', storm: 'Шторм',
+      jungle: 'Буйные джунгли', volcano: 'Извержение', ice: 'Лёд', solar: 'Солнечный взрыв',
+      aurora: 'Полярное сияние', sandstorm: 'Песчаная буря', ash: 'Пожар и пепел', thorns: 'Терновый щит',
+      unknown: 'Неизвестно'
     }[e] || e;
   }
 

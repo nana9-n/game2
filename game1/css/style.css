@@ -498,6 +498,14 @@ button.primary,
 .combo-tag.element-prism     { border-color: rgba(173,199,255,.55); background: rgba(173,199,255,.10); }
 .combo-tag.element-lightdome { border-color: rgba(242,218,138,.55); background: rgba(242,218,138,.10); }
 .combo-tag.element-plant     { border-color: rgba(141,224,150,.55); background: rgba(141,224,150,.10); }
+.combo-tag.element-jungle    { border-color: rgba(126,217,87,.55);  background: rgba(126,217,87,.10); }
+.combo-tag.element-volcano   { border-color: rgba(192,83,31,.55);   background: rgba(192,83,31,.10); }
+.combo-tag.element-ice       { border-color: rgba(143,208,245,.55); background: rgba(143,208,245,.10); }
+.combo-tag.element-solar     { border-color: rgba(255,210,77,.55);  background: rgba(255,210,77,.12); }
+.combo-tag.element-aurora    { border-color: rgba(157,255,206,.55); background: rgba(157,255,206,.10); }
+.combo-tag.element-sandstorm { border-color: rgba(184,145,90,.55);  background: rgba(184,145,90,.10); }
+.combo-tag.element-ash       { border-color: rgba(192,83,31,.55);   background: rgba(154,154,162,.12); }
+.combo-tag.element-thorns    { border-color: rgba(95,125,52,.55);   background: rgba(95,125,52,.10); }
 
 
 .element-water    { color: var(--water); }
@@ -515,6 +523,14 @@ button.primary,
 .element-mud      { color: var(--earth); }
 .element-lava     { color: var(--fire); }
 .element-storm    { color: var(--water); }
+.element-jungle   { color: #4f9a3f; }
+.element-volcano  { color: #c0531f; }
+.element-ice      { color: #3f8fbf; }
+.element-solar    { color: #c98a1f; }
+.element-aurora   { color: #4f8a8f; }
+.element-sandstorm{ color: #9c7a4e; }
+.element-ash      { color: #8a5a45; }
+.element-thorns   { color: #5f7d34; }
 .element-unknown  { color: var(--muted); }
 .risk-low { color: var(--risk-low); }
 .risk-medium { color: var(--risk-medium); }

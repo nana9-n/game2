@@ -98,7 +98,10 @@ export class GameObject {
   _matches(req, spell) {
     const elementOk = req.elements.includes(spell.element) || (spell.combo && req.elements.includes(spell.combo));
     const shapeOk = !req.shapes || req.shapes.includes(spell.shape);
-    const powerOk = (spell.power || 0) >= req.minPower;
+    // req.minPower может быть undefined у требований, заданных «сырыми»
+    // литералами (напр. AncientTreeObject) — иначе сравнение даёт NaN→false
+    // и уровень становится непроходимым.
+    const powerOk = (spell.power || 0) >= (req.minPower || 0);
     return elementOk && shapeOk && powerOk;
   }
 

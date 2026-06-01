@@ -4,7 +4,7 @@
  * несколько активных кастов, направленные потоки, комбо-реакции и частицы
  * с физикой через ParticleSystem.
  */
-import { ParticleSystem } from './Particle.js';
+import { ParticleSystem } from './Particle.js?v=20260602a';
 
 const PALETTES = {
   water: ['#4fd8ff', '#86efff', '#1a7fca', '#d7fbff'],
@@ -22,6 +22,14 @@ const PALETTES = {
   mud: ['#7b5a32', '#5f3f24', '#3f7a32', '#caa06b'],
   lava: ['#fff176', '#ff7a24', '#ad2215', '#3b1710'],
   storm: ['#aeefff', '#5fb8ff', '#d7fff0', '#6e8d98'],
+  jungle: ['#7ed957', '#3f8b3f', '#2f6f32', '#e7a6c8'],
+  volcano: ['#fff176', '#ff7a24', '#ad2215', '#6a6a72'],
+  ice: ['#bfe9ff', '#8fd0f5', '#5aa9e0', '#eafaff'],
+  solar: ['#fff6cf', '#ffd24d', '#ff9b2b', '#fffbe6'],
+  aurora: ['#9dffce', '#7fd0ff', '#c9a3ff', '#eafff5'],
+  sandstorm: ['#e8d2a6', '#d8b87a', '#b8915a', '#8c6b3e'],
+  ash: ['#ff8a3d', '#c0531f', '#6a6a72', '#9a9aa2'],
+  thorns: ['#9edc78', '#3f8b3f', '#caa06b', '#d9c0a0'],
   unknown: ['#b8b8c6', '#7f7f8c', '#333342']
 };
 
@@ -259,7 +267,7 @@ export class EffectEngine {
       drag: 0.92,
       turbulence: effect.chaos * 45
     });
-    if (effect.element === 'fire' || effect.element === 'firestorm' || effect.element === 'lava') {
+    if (['fire', 'firestorm', 'lava', 'volcano', 'ash', 'solar'].includes(effect.element)) {
       this._fireExplosion(effect);
     }
     if (label) this._addLabel(label, effect.origin, effect.palette[0]);
@@ -366,6 +374,14 @@ export class EffectEngine {
       case 'lava': this._emitLava(effect); break;
       case 'storm': this._emitStorm(effect); break;
       case 'prism': this._emitPrism(effect); break;
+      case 'jungle': this._emitJungle(effect); break;
+      case 'volcano': this._emitVolcano(effect); break;
+      case 'ice': this._emitIce(effect); break;
+      case 'solar': this._emitSolar(effect); break;
+      case 'aurora': this._emitAurora(effect); break;
+      case 'sandstorm': this._emitSandstorm(effect); break;
+      case 'ash': this._emitAsh(effect); break;
+      case 'thorns': this._emitThorns(effect); break;
       default: this._emitFizzle(effect); break;
     }
   }
@@ -509,6 +525,90 @@ export class EffectEngine {
       speed: 290 + e.power * 260, speedJitter: 110, life: 0.55, lifeJitter: 0.25, size: 2.5,
       sizeJitter: 2, color: this._pick(e.palette), shape: 'line', gravity: 120, drag: 0.99,
       turbulence: 45, glow: true });
+  }
+
+  _emitJungle(e) {
+    // Буйная зелень: листья и цветы медленно растут по всей площади
+    const p = this._areaPoint(e, 0.85, 0.55);
+    this.particles.emit({ x: p.x, y: p.y, xJitter: 14, yJitter: 14, angle: -Math.PI / 2,
+      spread: Math.PI * 0.9, speed: 14 + e.power * 30, speedJitter: 24, life: 2.0, lifeJitter: 1.0,
+      size: 2 + e.power * 2, endSize: 7 + e.power * 7, sizeJitter: 2, color: this._pick(e.palette),
+      shape: Math.random() < 0.3 ? 'flower' : 'leaf', gravity: -10, drag: 0.97, turbulence: 18, glow: false });
+  }
+
+  _emitVolcano(e) {
+    // Извержение: фонтан раскалённых камней и лавы вверх + дым
+    this.particles.emit({ count: 2, x: e.origin.x, y: e.origin.y + 8, xJitter: e.area * 0.3, yJitter: 8,
+      angle: -Math.PI / 2, spread: 0.7 + e.chaos * 0.6, speed: 180 + e.power * 280, speedJitter: 180,
+      life: 1.0, lifeJitter: 0.6, size: 5 + e.power * 10, sizeJitter: 8,
+      color: this._pick(e.palette.slice(0, 3)), shape: Math.random() < 0.5 ? 'shard' : 'circle',
+      gravity: 320, drag: 0.95, turbulence: 50, glow: true, additive: false });
+    if (Math.random() < 0.4) this.particles.emit({ x: e.origin.x, y: e.origin.y - 14, xJitter: e.area * 0.35, yJitter: 14,
+      angle: -Math.PI / 2, spread: 0.8, speed: 40 + e.power * 50, speedJitter: 60, life: 1.7, lifeJitter: 1.1,
+      size: 14 + e.power * 18, sizeJitter: 14, color: this._pick(['#5c5c64', '#6f6f78', '#48484f']),
+      shape: 'smoke', gravity: -30, drag: 0.96, turbulence: 55, alpha: 0.45 });
+  }
+
+  _emitIce(e) {
+    // Кристаллы льда мерцают и медленно оседают
+    const p = this._areaPoint(e, 0.8, 0.5);
+    this.particles.emit({ count: 2, x: p.x, y: p.y, xJitter: 14, yJitter: 12,
+      angle: -Math.PI / 2, spread: Math.PI * 2, speed: 25 + e.power * 55, speedJitter: 45,
+      life: 1.0 + e.area / 420, lifeJitter: 0.5, size: 3 + e.power * 5, sizeJitter: 4,
+      color: this._pick(e.palette), shape: Math.random() < 0.5 ? 'shard' : 'spark',
+      gravity: 45, drag: 0.97, turbulence: 12, glow: true, additive: false });
+  }
+
+  _emitSolar(e) {
+    // Солнечная вспышка: яркие лучи и искры наружу
+    this.particles.emit({ count: 2, x: e.origin.x, y: e.origin.y, xJitter: e.area * 0.15, yJitter: e.area * 0.15,
+      angle: Math.random() * Math.PI * 2, spread: Math.PI * 2, speed: 120 + e.power * 240, speedJitter: 140,
+      life: 0.6 + e.power * 0.6, lifeJitter: 0.4, size: 3 + e.power * 6, sizeJitter: 5,
+      color: this._pick(e.palette), shape: Math.random() < 0.45 ? 'spark' : 'circle',
+      gravity: -20, drag: 0.93, turbulence: 30, glow: true, additive: true });
+  }
+
+  _emitAurora(e) {
+    // Полярное сияние: плавные цветные ленты
+    const p = this._areaPoint(e, 1.1, 0.6);
+    const wave = Math.sin(e.age * 1.6 + p.x * 0.02) * 0.7;
+    this.particles.emit({ x: p.x, y: p.y, xJitter: 14, yJitter: 18, angle: (e.dir.angle || 0) + wave,
+      spread: 0.3, speed: 40 + e.power * 70, speedJitter: 40, life: 1.6, lifeJitter: 0.8,
+      size: 2.5 + e.power * 3, sizeJitter: 2, color: this._pick(e.palette),
+      shape: Math.random() < 0.6 ? 'line' : 'spark', drag: 0.99, turbulence: 25, glow: true, additive: true, alpha: 0.7 });
+  }
+
+  _emitSandstorm(e) {
+    // Песчаная буря: летящая пыль и осколки по направлению
+    const offset = (Math.random() - 0.5) * e.area;
+    this.particles.emit({ count: 2, x: e.origin.x - e.dir.y * offset, y: e.origin.y + e.dir.x * offset,
+      angle: e.dir.angle, spread: 0.5 + e.chaos * 0.6, speed: 120 + e.power * 240, speedJitter: 120,
+      life: 0.7 + e.area / 380, lifeJitter: 0.4, size: 3 + e.power * 5, sizeJitter: 5,
+      color: this._pick(e.palette), shape: Math.random() < 0.4 ? 'shard' : 'smoke',
+      gravity: 20, drag: 0.97, turbulence: 70 + e.chaos * 90, alpha: 0.7 });
+  }
+
+  _emitAsh(e) {
+    // Пожар: тлеющие угли вверх и серый пепел вниз
+    const p = this._areaPoint(e, 0.9, 0.6);
+    this.particles.emit({ x: p.x, y: p.y, xJitter: 12, yJitter: 10, angle: -Math.PI / 2, spread: 1.0,
+      speed: 60 + e.power * 120, speedJitter: 90, life: 0.8, lifeJitter: 0.5, size: 3 + e.power * 4, sizeJitter: 3,
+      color: this._pick(['#ff8a3d', '#ff5b24', '#ffd24d']), shape: 'spark', gravity: -50, drag: 0.95,
+      turbulence: 60, glow: true, additive: true });
+    if (Math.random() < 0.6) this.particles.emit({ x: p.x, y: p.y - 8, xJitter: e.area * 0.3, yJitter: 12,
+      angle: -Math.PI / 2, spread: 1.4, speed: 20 + e.power * 30, speedJitter: 40, life: 1.6, lifeJitter: 1.0,
+      size: 4 + e.power * 5, sizeJitter: 4, color: this._pick(['#7d7d86', '#9a9aa2', '#55555c']),
+      shape: Math.random() < 0.5 ? 'smoke' : 'circle', gravity: 30, drag: 0.97, turbulence: 40, alpha: 0.5 });
+  }
+
+  _emitThorns(e) {
+    // Терновый щит: колючие лозы по кольцу вокруг источника
+    const a = Math.random() * Math.PI * 2;
+    const r = e.area * 0.5;
+    this.particles.emit({ x: e.origin.x + Math.cos(a) * r, y: e.origin.y + Math.sin(a) * r * 0.8,
+      angle: a, spread: 0.5, speed: 30 + e.power * 50, speedJitter: 40, life: 1.4, lifeJitter: 0.7,
+      size: 3 + e.power * 4, endSize: 6 + e.power * 5, sizeJitter: 3, color: this._pick(e.palette),
+      shape: Math.random() < 0.5 ? 'leaf' : 'shard', gravity: 0, drag: 0.97, turbulence: 20, glow: false });
   }
 
   _emitFizzle(e) {

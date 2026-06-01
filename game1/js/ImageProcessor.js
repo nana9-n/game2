@@ -1,13 +1,13 @@
 /**
  * ImageProcessor
- * Готовит рисунок глифа для нейросети в формате MNIST: 28×28×1.
- * Рисунок обрезается по пикселям, масштабируется в поле 20×20 и центрируется.
+ * Готовит рисунок глифа для нейросети: нормализованное изображение 64×64×1.
+ * Рисунок обрезается по пикселям, масштабируется в поле innerSize и центрируется.
  */
 export class ImageProcessor {
   constructor() {
-    this.size = 28;
-    this.innerSize = 20;
-    this.padding = 4;
+    this.size = 64;
+    this.innerSize = 52;
+    this.padding = 6;
     this.buffer = document.createElement('canvas');
     this.buffer.width = this.size;
     this.buffer.height = this.size;
@@ -18,7 +18,7 @@ export class ImageProcessor {
   }
 
   /**
-   * Преобразует canvas в тензор [1, 28, 28, 1] со значениями 0..1.
+   * Преобразует canvas в тензор [1, 64, 64, 1] со значениями 0..1.
    * @param {HTMLCanvasElement} sourceCanvas
    * @returns {{tensor: tf.Tensor, preview: HTMLCanvasElement, empty: boolean}}
    */
@@ -53,11 +53,13 @@ export class ImageProcessor {
   }
 
   /**
-   * Рисует один штрих на временном холсте и отправляет его в общий pipeline.
-   * @param {Array<{x:number,y:number}>} points
+   * Рисует ГРУППУ штрихов (одну «кляксу» — связанные штрихи одного глифа)
+   * на временном холсте и прогоняет через общий pipeline нормализации.
+   * Так квадрат из 4 линий попадает в сеть как цельное изображение квадрата.
+   * @param {Array<{points:Array<{x:number,y:number}>}>|Array<Array>} strokeList
    * @param {number} sourceSize
    */
-  processStroke(points, sourceSize = 520) {
+  processStrokeGroup(strokeList, sourceSize = 520) {
     const canvas = document.createElement('canvas');
     canvas.width = sourceSize;
     canvas.height = sourceSize;
@@ -71,18 +73,29 @@ export class ImageProcessor {
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
 
-    if (points?.length === 1) {
-      ctx.beginPath();
-      ctx.arc(points[0].x, points[0].y, 4, 0, Math.PI * 2);
-      ctx.fill();
-    } else if (points?.length > 1) {
-      ctx.beginPath();
-      ctx.moveTo(points[0].x, points[0].y);
-      for (let i = 1; i < points.length; i++) ctx.lineTo(points[i].x, points[i].y);
-      ctx.stroke();
+    for (const stroke of strokeList) {
+      const points = Array.isArray(stroke) ? stroke : (stroke.points || []);
+      if (points.length === 1) {
+        ctx.beginPath();
+        ctx.arc(points[0].x, points[0].y, 4, 0, Math.PI * 2);
+        ctx.fill();
+      } else if (points.length > 1) {
+        ctx.beginPath();
+        ctx.moveTo(points[0].x, points[0].y);
+        for (let i = 1; i < points.length; i++) ctx.lineTo(points[i].x, points[i].y);
+        ctx.stroke();
+      }
     }
 
     return this.process(canvas);
+  }
+
+  /**
+   * Совместимость: один штрих как частный случай группы из одного штриха.
+   * @param {Array<{x:number,y:number}>} points
+   */
+  processStroke(points, sourceSize = 520) {
+    return this.processStrokeGroup([points], sourceSize);
   }
 
   _ensureTf() {

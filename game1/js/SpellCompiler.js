@@ -56,6 +56,14 @@ const DEFAULT_SHAPE = {
   mud:       'growth',
   lava:      'lava',
   storm:     'storm',
+  jungle:    'floweringVines',
+  volcano:   'firestorm',
+  ice:       'shield',
+  solar:     'sphere',
+  aurora:    'beam',
+  sandstorm: 'vortex',
+  ash:       'burst',
+  thorns:    'shield',
   unknown:   'fizzle'
 };
 
@@ -72,6 +80,14 @@ const COMBO_TABLE = [
     elements: ['earth', 'water', 'light'],
     result: { element: 'bloom',     shape: 'floweringVines', label: 'Земля + Вода + Свет = Цветение',      boost: 1.4  }
   },
+  {
+    elements: ['earth', 'water', 'plant'],
+    result: { element: 'jungle',    shape: 'floweringVines', label: 'Земля + Вода + Растение = Буйные джунгли', boost: 1.45 }
+  },
+  {
+    elements: ['fire', 'earth', 'wind'],
+    result: { element: 'volcano',   shape: 'firestorm',      label: 'Огонь + Земля + Ветер = Извержение',  boost: 1.5  }
+  },
   // ── 2 элемента ────────────────────────────────────────────────────────
   { elements: ['water',  'plant'],   result: { element: 'bloom',      shape: 'floweringVines', label: 'Вода + Лозы = Цветущие лозы',        boost: 1.3  } },
   { elements: ['light',  'plant'],   result: { element: 'bloom',      shape: 'floweringVines', label: 'Свет + Растение = Бурный рост',       boost: 1.35 } },
@@ -83,11 +99,18 @@ const COMBO_TABLE = [
   { elements: ['earth',  'water'],   result: { element: 'mud',        shape: 'growth',         label: 'Земля + Вода = Грязь/Рост',           boost: 1.1  } },
   { elements: ['earth',  'plant'],   result: { element: 'plant',      shape: 'vine',           label: 'Земля + Растение = Корни/Лоза',       boost: 1.0  } },
   { elements: ['fire',   'water'],   result: { element: 'mist',       shape: 'steam',          label: 'Огонь + Вода = Паровая завеса',       boost: 1.0  } },
+  // ── новые комбинации ──────────────────────────────────────────────────
+  { elements: ['water',  'barrier'], result: { element: 'ice',        shape: 'shield',         label: 'Вода + Барьер = Лёд',                 boost: 1.18 } },
+  { elements: ['fire',   'light'],   result: { element: 'solar',      shape: 'sphere',         label: 'Огонь + Свет = Солнечный взрыв',      boost: 1.32 } },
+  { elements: ['wind',   'light'],   result: { element: 'aurora',     shape: 'beam',           label: 'Ветер + Свет = Полярное сияние',      boost: 1.22 } },
+  { elements: ['earth',  'wind'],    result: { element: 'sandstorm',  shape: 'vortex',         label: 'Земля + Ветер = Песчаная буря',       boost: 1.2  } },
+  { elements: ['fire',   'plant'],   result: { element: 'ash',        shape: 'burst',          label: 'Огонь + Растение = Пожар и пепел',    boost: 1.16 } },
+  { elements: ['plant',  'barrier'], result: { element: 'thorns',     shape: 'shield',         label: 'Растение + Барьер = Терновый щит',    boost: 1.2  } },
 ];
 
 // Элементы-эффекты, которые НЕ наследуют направление стрелки
 // (защитные / рассеивающие, всегда вокруг источника)
-const NON_DIRECTIONAL = new Set(['barrier', 'lightdome']);
+const NON_DIRECTIONAL = new Set(['barrier', 'lightdome', 'ice', 'solar', 'thorns']);
 
 export class SpellCompiler {
 
@@ -439,6 +462,14 @@ export class SpellCompiler {
       mud:       'Грязь/Рост',
       lava:      'Магма',
       storm:     'Шторм',
+      jungle:    'Буйные джунгли',
+      volcano:   'Извержение',
+      ice:       'Лёд',
+      solar:     'Солнечный взрыв',
+      aurora:    'Полярное сияние',
+      sandstorm: 'Песчаная буря',
+      ash:       'Пожар и пепел',
+      thorns:    'Терновый щит',
       unknown:   'Неизвестно'
     }[e] || e;
   }
