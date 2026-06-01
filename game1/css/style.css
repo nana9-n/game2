@@ -463,6 +463,40 @@ button.primary,
 .fill-stability { background: var(--accent-2); }
 .notes { margin-top: 8px; padding-left: 18px; color: var(--muted); font-size: .84rem; }
 
+/* ── Многослойные заклинания ─────────────────────────────────────────── */
+.spell-layers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-bottom: 10px;
+}
+
+/* Тег-комбо: золотистая рамка, жирный текст */
+.combo-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 11px;
+  border-radius: 999px;
+  color: var(--text);
+  background: rgba(255, 213, 100, 0.12);
+  border: 1px solid rgba(255, 213, 100, 0.40);
+  font-size: .82rem;
+  font-weight: 600;
+  letter-spacing: .01em;
+}
+
+/* Цветовые акценты для combo-tag повторяют element-классы */
+.combo-tag.element-mist      { border-color: rgba(174,191,203,.55); background: rgba(174,191,203,.10); }
+.combo-tag.element-firestorm { border-color: rgba(255,155,107,.55); background: rgba(255,155,107,.10); }
+.combo-tag.element-storm     { border-color: rgba(107,199,255,.55); background: rgba(107,199,255,.10); }
+.combo-tag.element-lava      { border-color: rgba(255,122,36,.55);  background: rgba(255,122,36,.10); }
+.combo-tag.element-mud       { border-color: rgba(195,162,122,.55); background: rgba(195,162,122,.10); }
+.combo-tag.element-bloom     { border-color: rgba(238,183,212,.55); background: rgba(238,183,212,.10); }
+.combo-tag.element-prism     { border-color: rgba(173,199,255,.55); background: rgba(173,199,255,.10); }
+.combo-tag.element-lightdome { border-color: rgba(242,218,138,.55); background: rgba(242,218,138,.10); }
+.combo-tag.element-plant     { border-color: rgba(141,224,150,.55); background: rgba(141,224,150,.10); }
+
+
 .element-water    { color: var(--water); }
 .element-fire     { color: var(--fire); }
 .element-wind     { color: var(--wind); }
