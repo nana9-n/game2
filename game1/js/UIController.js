@@ -499,14 +499,40 @@ export class UIController {
 
   // ---------- Отрисовка результата ----------
 
+  // Вспомогательный метод: человекочитаемое имя элемента (используется в UI)
+  _elementName(e) {
+    return {
+      water: 'Вода', fire: 'Огонь', wind: 'Ветер', earth: 'Земля',
+      light: 'Свет', plant: 'Растение', bloom: 'Цветущие лозы',
+      prism: 'Призматический луч', barrier: 'Барьер',
+      mist: 'Туман/Пар', firestorm: 'Огненный вихрь', lightdome: 'Световой купол',
+      mud: 'Грязь/Рост', lava: 'Магма', storm: 'Шторм', unknown: 'Неизвестно'
+    }[e] || e;
+  }
+
   _renderResult(spell, isWarning) {
     const el = document.getElementById('spellResult');
-    const elName = {
-      water: 'Вода', fire: 'Огонь', wind: 'Ветер', earth: 'Земля',
-      light: 'Свет', plant: 'Растение', bloom: 'Цветущие лозы', prism: 'Призма', barrier: 'Барьер',
-      mist: 'Туман', firestorm: 'Огнешторм', lightdome: 'Световой купол',
-      mud: 'Грязь', lava: 'Магма', storm: 'Шторм', unknown: 'Неизвестно'
-    }[spell.element] || spell.element;
+
+    // ── Многослойный заголовок ─────────────────────────────────────────
+    let layersHTML = '';
+    if (spell.layers && spell.layers.length > 0) {
+      const items = spell.layers.map(layer => {
+        if (layer.isCombo) {
+          return `<span class="combo-tag element-${layer.element}">${layer.label}</span>`;
+        }
+        const name = this._elementName(layer.element);
+        return `<span class="glyph-tag element-${layer.element}">${name}</span>`;
+      }).join('');
+      layersHTML = `<div class="spell-layers">${items}</div>`;
+    } else {
+      const elName = this._elementName(spell.element);
+      layersHTML = `
+        <div style="margin-bottom:8px">
+          <strong class="element-${spell.element}">${elName}</strong>
+          — форма: <em>${this._shapeLabel(spell.shape)}</em>
+          ${spell.combo ? `<br><small class="element-wind">${spell.combo}</small>` : ''}
+        </div>`;
+    }
 
     const riskLabel = {
       low: 'Низкий', medium: 'Средний', high: 'Высокий'
@@ -515,12 +541,7 @@ export class UIController {
     const notes = spell.notes.map(n => `<li>${n}</li>`).join('');
 
     el.innerHTML = `
-      <div style="margin-bottom:8px">
-        <strong class="element-${spell.element}">${elName}</strong>
-        — форма: <em>${this._shapeLabel(spell.shape)}</em>
-        ${spell.combo ? `<br><small class="element-wind">${spell.combo}</small>` : ''}
-      </div>
-
+      ${layersHTML}
       <div class="bar">
         <span class="bar-label">Сила</span>
         <div class="bar-track"><div class="bar-fill fill-power" style="width:${spell.power}%"></div></div>
@@ -543,7 +564,6 @@ export class UIController {
         <span class="bar-label">Риск</span>
         <span class="risk-${spell.risk}">${riskLabel}</span>
       </div>
-
       <ul class="notes">${notes}</ul>
     `;
   }

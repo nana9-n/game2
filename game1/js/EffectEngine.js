@@ -53,14 +53,45 @@ export class EffectEngine {
   }
 
   /**
-   * API не изменён: UIController по-прежнему вызывает engine.cast(spell).
+   * Основной вход для UIController: engine.cast(spell).
+   *
+   * Многослойный режим (spell.layers !== undefined):
+   *   Каждый слой порождает отдельный эффект одновременно.
+   *   Комбо-слои получают метку над сценой.
+   *   Runtime _findCombo пропускается — слои уже разрешены SpellCompiler.
+   *
+   * Одиночный режим (нет spell.layers):
+   *   Прежнее поведение с runtime _findCombo (каст поверх другого каста).
    */
   cast(spell) {
+    // ── Многослойный каст ────────────────────────────────────────────────
+    if (spell.layers && spell.layers.length > 0) {
+      for (const layer of spell.layers) {
+        const layerSpell = {
+          ...spell,
+          element:   layer.element,
+          shape:     layer.shape,
+          power:     layer.power,
+          area:      layer.area,
+          duration:  layer.duration,
+          direction: layer.direction || spell.direction,
+          vector:    layer.direction || spell.vector,
+          combo:     layer.isCombo ? layer.label : null
+        };
+        const effect = this._createEffect(layerSpell);
+        this.activeEffects.push(effect);
+        this._impact(effect, layer.isCombo ? `✶ ${layer.label}` : null);
+        this._notifySpellHit(layerSpell, effect);
+      }
+      return;
+    }
+
+    // ── Одиночный каст (обратная совместимость) ──────────────────────────
     const effect = this._createEffect(spell);
-    const combo = this._findCombo(effect);
+    const combo  = this._findCombo(effect);
 
     this.activeEffects.push(effect);
-    this._impact(effect, spell.combo ? `✦ ${spell.combo}` : null);
+    this._impact(effect, spell.combo ? `✶ ${spell.combo}` : null);
     this._notifySpellHit(spell, effect);
 
     if (combo) {
