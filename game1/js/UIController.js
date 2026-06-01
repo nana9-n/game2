@@ -98,22 +98,15 @@ export class UIController {
       btn.onclick = () => this._switchMode(btn.dataset.mode);
     });
 
-    // Закрытие модалок
+    // Закрытие модалок — закрывает ту модалку, в которой нажата кнопка
     document.querySelectorAll('[data-close]').forEach(el => {
-      el.onclick = () => {
-        document.getElementById('bookModal')?.classList.add('hidden');
-        document.getElementById('levelWinModal')?.classList.add('hidden');
-      };
+      el.onclick = () => el.closest('.modal')?.classList.add('hidden');
     });
 
     document.getElementById('btnLevelReset')?.addEventListener('click', () => this._resetLevel());
+    document.getElementById('btnLevelHints')?.addEventListener('click', () => this._openHints());
     document.getElementById('btnLevelMap')?.addEventListener('click', () => this._toggleLevelMap());
     document.getElementById('btnNextLevel')?.addEventListener('click', () => this._nextLevel());
-    document.getElementById('btnWinNext')?.addEventListener('click', () => this._nextLevel());
-    document.getElementById('btnWinMap')?.addEventListener('click', () => {
-      document.getElementById('levelWinModal')?.classList.add('hidden');
-      this._showLevelMap(true);
-    });
   }
 
   _handleHotkeys(event) {
@@ -376,7 +369,7 @@ export class UIController {
 
   _exitGameMode() {
     document.getElementById('gameHud')?.classList.add('hidden');
-    document.getElementById('levelWinModal')?.classList.add('hidden');
+    document.getElementById('hintModal')?.classList.add('hidden');
     this.engine.setGameObjects([]);
     this.gameWon = false;
   }
@@ -387,14 +380,12 @@ export class UIController {
     this.gameWon = false;
     this.engine.setGameObjects(this.levels.objects);
     document.getElementById('btnNextLevel')?.classList.add('hidden');
-    document.getElementById('levelWinModal')?.classList.add('hidden');
     this._showLevelMap(false);
     this._updateGameHud();
   }
 
   _nextLevel() {
     if (this.mode !== 'trial') return;
-    document.getElementById('levelWinModal')?.classList.add('hidden');
     if (!this.levels.isLastLevel() || this.gameWon) this.levels.nextLevel();
     this.gameWon = false;
     this.engine.setGameObjects(this.levels.objects);
@@ -409,6 +400,29 @@ export class UIController {
   _toggleLevelMap() {
     const map = document.getElementById('levelMap');
     this._showLevelMap(map?.classList.contains('hidden'));
+  }
+
+  /**
+   * Отдельное окно подсказок: открывается кнопкой «Подсказки».
+   * Здесь спрятаны все «нарисуй то-то» — чтобы игрок сначала думал сам.
+   */
+  _openHints() {
+    if (this.mode !== 'trial') return;
+    const level = this.levels.currentLevel();
+    const content = document.getElementById('hintContent');
+    if (!content) return;
+
+    const steps = this.levels.getProgress().items;
+    const stepList = steps.length > 1
+      ? `<ul class="hint-steps">${steps.map(s => `<li>${s.label}</li>`).join('')}</ul>`
+      : '';
+
+    content.innerHTML = `
+      <p class="hint-goal">🎯 ${level.description}</p>
+      <p class="hint-text">${level.hint}</p>
+      ${stepList}
+    `;
+    document.getElementById('hintModal')?.classList.remove('hidden');
   }
 
   _showLevelMap(show) {
@@ -473,16 +487,15 @@ export class UIController {
     this.gameWon = true;
     this.levels.completeCurrent();
     const level = this.levels.currentLevel();
+
+    // Без всплывающего окна: просто разблокируем кнопку «Следующий уровень»
+    // и показываем краткое сообщение в строке-подсказке сцены.
     document.getElementById('btnNextLevel')?.classList.toggle('hidden', this.levels.isLastLevel());
-    document.getElementById('levelWinTitle').textContent = this.levels.isLastLevel()
-      ? '🏆 Финал пройден!'
-      : '✅ Уровень пройден!';
-    document.getElementById('levelWinText').textContent = this.levels.isLastLevel()
-      ? 'Ты прошёл всю карту мастерской. ' + level.reward
-      : `${level.reward} Следующий уровень открыт.`;
-    document.getElementById('btnWinNext')?.classList.toggle('hidden', this.levels.isLastLevel());
-    document.getElementById('levelWinModal')?.classList.remove('hidden');
-    this._updateGameHud();
+    document.getElementById('trialHint').textContent = this.levels.isLastLevel()
+      ? `🏆 Финал пройден! ${level.reward}`
+      : `✅ Уровень пройден! ${level.reward} Следующий уровень открыт.`;
+
+    this._updateGameHud(level, false);
   }
 
   _updateGameHud(level = this.levels.currentLevel(), updateHint = true) {
@@ -491,7 +504,6 @@ export class UIController {
     const number = this.levels.index + 1;
     document.getElementById('levelTitle').textContent = `${number}. ${level.title}`;
     document.getElementById('levelGoal').textContent = `🎯 Цель: ${level.description}`;
-    document.getElementById('levelHint').textContent = `💡 ${level.hint}`;
     document.getElementById('levelProgressFill').style.width = `${progress.total}%`;
     if (updateHint) document.getElementById('trialHint').textContent = `${level.title}: ${level.description}`;
 
@@ -506,11 +518,17 @@ export class UIController {
 
     const objectProgress = document.getElementById('objectProgress');
     if (objectProgress) {
-      objectProgress.innerHTML = progress.items.map(item => `
+      // Показываем только нейтральный прогресс без подсказки-решения
+      objectProgress.innerHTML = progress.items.map(item => {
+        const name = item.stepCount > 1
+          ? `${item.objectLabel} · шаг ${item.stepIndex + 1}`
+          : item.objectLabel;
+        return `
         <div class="object-progress-row">
-          <span>${item.objectLabel}: ${item.label}</span>
+          <span>${name}</span>
           <div class="mini-track"><div style="width:${item.value}%"></div></div>
-        </div>`).join('');
+        </div>`;
+      }).join('');
     }
 
     this._renderLevelMap();

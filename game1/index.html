@@ -97,11 +97,11 @@
           <p id="levelGoal">🎯 Цель: —</p>
           <div class="progress-line"><div id="levelProgressFill"></div></div>
           <div id="objectProgress" class="object-progress"></div>
-          <p id="levelHint" class="muted">💡 Подсказка появится здесь.</p>
         </div>
 
         <div class="hud-actions">
           <button id="btnLevelReset">↺ Заново</button>
+          <button id="btnLevelHints">💡 Подсказки</button>
           <button id="btnLevelMap">⮜ Карта уровней</button>
           <button id="btnNextLevel" class="primary hidden">➡ Следующий уровень</button>
         </div>
@@ -157,15 +157,12 @@
     </div>
   </div>
 
-  <div id="levelWinModal" class="modal hidden">
-    <div class="modal-content victory-card">
+  <div id="hintModal" class="modal hidden">
+    <div class="modal-content">
       <button class="modal-close" data-close>✕</button>
-      <h2 id="levelWinTitle">Уровень пройден</h2>
-      <p id="levelWinText"></p>
-      <div class="modal-actions">
-        <button id="btnWinMap">Карта уровней</button>
-        <button id="btnWinNext" class="primary">Следующий уровень</button>
-      </div>
+      <h2>💡 Подсказки</h2>
+      <p class="muted">Не подглядывай раньше времени — попробуй разгадать уровень сам.</p>
+      <div id="hintContent"></div>
     </div>
   </div>
 
