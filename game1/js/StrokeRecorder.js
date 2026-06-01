@@ -64,9 +64,9 @@ export class StrokeRecorder {
     const ctx = this.ctx;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
-    ctx.strokeStyle = '#e8e0ff';
+    ctx.strokeStyle = '#3e2a16';
     ctx.shadowBlur = 4;
-    ctx.shadowColor = 'rgba(170,150,255,0.6)';
+    ctx.shadowColor = 'rgba(74,50,24,0.5)';
   }
 
   _pos(e) {
@@ -176,6 +176,21 @@ export class StrokeRecorder {
   }
 
   /**
+   * Программно добавляет один штрих из массива точек {x, y}
+   * (например, ровный круг, нарисованный кнопкой), не трогая остальные.
+   */
+  addStrokeFromPoints(points) {
+    if (!points || points.length < 2) return;
+    const s = new Stroke();
+    const now = performance.now();
+    for (const p of points) s.addPoint(p.x, p.y, 0.5, now);
+    s.finalize();
+    this.strokes.push(s);
+    this.redoStack = [];
+    this._redraw();
+  }
+
+  /**
    * Загружает штрихи из сохранённых данных (только координаты).
    */
   loadStrokes(rawStrokes) {
@@ -198,6 +213,7 @@ export class StrokeRecorder {
   _redraw() {
     const ctx = this.ctx;
     ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    ctx.strokeStyle = '#3e2a16';
     for (const s of this.strokes) {
       const pts = s.points;
       if (pts.length < 2) {
@@ -205,7 +221,7 @@ export class StrokeRecorder {
         if (pts.length === 1) {
           ctx.beginPath();
           ctx.arc(pts[0].x, pts[0].y, 3, 0, Math.PI * 2);
-          ctx.fillStyle = '#e8e0ff';
+          ctx.fillStyle = '#3e2a16';
           ctx.fill();
         }
         continue;
